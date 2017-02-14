@@ -49,6 +49,9 @@
                              (string-join (dockerfile-cmd dfile) "\", \"")))
                "\n\n"))
 
+; Container
+; ---------------------
+
 (struct container (name image-version port dockerfile))
 
 (define (container->hash proj-name cont)
@@ -56,8 +59,8 @@
         "image" (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont))
         "ports" (list (hash "containerPort" (container-port cont)))))
 
-(define (create-container-dir depl-dir cont)
-  (define dir (build-path depl-dir (container-name cont)))
+(define (create-container-dir serv-dir cont)
+  (define dir (build-path serv-dir (container-name cont)))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
@@ -69,49 +72,73 @@
                        (display (cdr f) out))))
        (hash->list (dockerfile-files (container-dockerfile cont)))))
 
-(define (build-container proj-name depl-path cont)
+(define (build-container proj-name serv-dir cont)
   (define image-tag (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
   (define docker-path (find-executable-path "docker"))
-  (exec (build-path depl-path (container-name cont)) docker-path "build" "-t" image-tag "."))
+  (exec (build-path serv-dir (container-name cont)) docker-path "build" "-t" image-tag "."))
 
-(struct deployment (name replicas containers))
+; Service
+; ---------------------
 
-(define (deployment->string proj-name depl)
-  (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (deployment-name depl)))
+(struct service (name replicas containers ports))
+
+(define (service->deployment-yaml proj-name serv)
+  (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (service-name serv)))
                          "spec" (hash "containers" (map (curry container->hash proj-name)
-                                                        (deployment-containers depl)))))
-  (define spec (hash "replicas" (deployment-replicas depl)
+                                                        (service-containers serv)))))
+  (define spec (hash "replicas" (service-replicas serv)
                      "template" pod-tmpl))
-  (define full-spec (hash "apiVersion" "extensions/v1beta1"
-                          "kind" "Deployment"
-                          "metadata" (hash "name" (format "~a-deployment" (deployment-name depl)))
-                          "spec" spec))
-  (yaml->string full-spec))
+  (yaml->string
+   (hash "apiVersion" "extensions/v1beta1"
+         "kind" "Deployment"
+         "metadata" (hash "name" (format "~a-deployment" (service-name serv)))
+         "spec" spec)))
 
-(define (create-deployment-dir proj-dir proj-name depl)
-  (define dir (build-path proj-dir (deployment-name depl)))
+(define (service->yaml serv)
+  (define spec (hash "ports" (map (lambda (p) (hash "port" (car p) "targetPort" (cdr p)))
+                                  (service-ports serv))
+                     "selector" (hash "app" (service-name serv))
+                     "type" "NodePort"))
+  (yaml->string
+   (hash "apiVersion" "v1"
+         "kind" "Service"
+         "metadata" (hash "name" (format "~a-service" (service-name serv)))
+         "spec" spec)))
+
+(define (create-service-dir proj-dir proj-name serv)
+  (define dir (build-path proj-dir (service-name serv)))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
   (call-with-output-file (build-path dir "deployment.yml")
     (lambda (out)
-      (display (deployment->string proj-name depl) out)))
-  (map (curry create-container-dir dir) (deployment-containers depl)))
+      (display (service->deployment-yaml proj-name serv) out)))
+  (call-with-output-file (build-path dir "service.yml")
+    (lambda (out)
+      (display (service->yaml serv) out)))
+  (map (curry create-container-dir dir) (service-containers serv)))
 
-(define (create-deployment depl-dir depl)
+(define (create-deployment serv-dir)
   (define kubectl-path (build-path (current-directory) "bin" "kubectl"))
-  (exec depl-dir kubectl-path "create" "-f" "deployment.yml"))
+  (exec serv-dir kubectl-path "create" "-f" "deployment.yml"))
 
-(struct project (name deployments))
+(define (create-service serv-dir)
+  (define kubectl-path (build-path (current-directory) "bin" "kubectl"))
+  (exec serv-dir kubectl-path "create" "-f" "service.yml"))
+
+; Project
+; ---------------------
+
+(struct project (name services))
 
 (define (project-path proj)
   (build-path (current-directory) "projects" (project-name proj)))
 
-(define (deployment-path proj depl)
-  (build-path (project-path proj) (deployment-name depl)))
+(define (service-path proj serv)
+  (build-path (project-path proj) (service-name serv)))
 
-(define (container-path proj depl cont)
-  (build-path (deployment-path project depl) (container-name cont)))
+(define (container-path proj serv cont)
+  (build-path (service-path project serv) (container-name cont)))
 
 (define (create-project-dirs proj [overwrite #f])
   (define dir (project-path proj))
@@ -120,36 +147,45 @@
         (delete-directory/files dir)
         (error 'directory-exists "~a" dir)))
   (make-directory dir)
-  (map (curry create-deployment-dir dir (project-name proj)) (project-deployments proj)))
+  (map (curry create-service-dir dir (project-name proj)) (project-services proj)))
 
 (define (build-project proj)
-  (map (lambda (depl)
+  (map (lambda (serv)
          (map (lambda (cont)
-                (let ([eo (build-container (project-name proj) (deployment-path proj depl) cont)])
+                (let ([eo (build-container (project-name proj) (service-path proj serv) cont)])
                   (if (= 0 (exec-output-code eo))
                       (display (format "BUILD SUCCESS (~a > ~a):\n~a\n"
-                                       (deployment-name depl)
+                                       (service-name serv)
                                        (container-name cont)
                                        (exec-output-stdout eo)))
                       (display (format "BUILD ERROR (~a > ~a):\n~a\n"
-                                       (deployment-name depl)
+                                       (service-name serv)
                                        (container-name cont)
                                        (exec-output-stderr eo))))))
-              (deployment-containers depl)))
-       (project-deployments proj)))
+              (service-containers serv)))
+       (project-services proj)))
 
 (define (deploy-project proj)
-    (map (lambda (depl)
-           (let ([eo (create-deployment (deployment-path proj depl) depl)])
+    (map (lambda (serv)
+           (let ([eo (create-deployment (service-path proj serv))])
              (if (= 0 (exec-output-code eo))
-                 (display (format "DEPLOY SUCCESS (~a):\n~a\n"
-                                  (deployment-name depl)
+                 (display (format "DEPLOYMENT SUCCESS (~a):\n~a\n"
+                                  (service-name serv)
                                   (exec-output-stdout eo)))
-                 (display (format "DEPLOY ERROR (~a):\n~a\n"
-                                  (deployment-name depl)
+                 (display (format "DEPLOYMENT ERROR (~a):\n~a\n"
+                                  (service-name serv)
+                                  (exec-output-stderr eo)))))
+           (let ([eo (create-service (service-path proj serv))])
+             (if (= 0 (exec-output-code eo))
+                 (display (format "SERVICE SUCCESS (~a):\n~a\n"
+                                  (service-name serv)
+                                  (exec-output-stdout eo)))
+                 (display (format "SERVICE ERROR (~a):\n~a\n"
+                                  (service-name serv)
                                   (exec-output-stderr eo))))))
-         (project-deployments proj)))
+         (project-services proj)))
 
+; Sample Project
 ; ---------------------
 
 (define ZK_PORT 2181)
@@ -184,9 +220,9 @@ clientPort=~a")
                                 ZK_PORT
                                 zk-dockerfile))
 
-(define zk-deployment (deployment "zookeeper" 1 (list zk-container)))
+(define zk-service (service "zookeeper" 1 (list zk-container) (list (cons ZK_PORT ZK_PORT))))
 
-(define sample-project (project "sample" (list zk-deployment)))
+(define sample-project (project "sample" (list zk-service)))
 
 (create-project-dirs sample-project #t)
 ; (build-project sample-project)

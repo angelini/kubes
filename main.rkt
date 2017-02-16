@@ -8,9 +8,9 @@
 (define env-vars
   (let ([vars (environment-variables-copy (current-environment-variables))]
         [bin-dir (build-path (current-directory) "bin")])
-    (set-var vars "PATH" (path->string bin-dir))
+    (set-var vars "PATH" (format "~a:~a" (path->string bin-dir) (getenv "PATH")))
     (set-var vars "DOCKER_TLS_VERIFY" "1")
-    (set-var vars "DOCKER_HOST" "tcp://192.168.99.100:2376")
+    (set-var vars "DOCKER_HOST" "tcp://192.168.64.3:2376")
     (set-var vars "DOCKER_CERT_PATH" "/Users/alexangelini/.minikube/certs")
     (set-var vars "DOCKER_API_VERSION" "1.23")
     vars))
@@ -31,6 +31,15 @@
 (define (read-all port [buffer ""])
   (define s (read-string 1024 port))
   (if (equal? s eof) buffer (read-all port (string-append buffer s))))
+
+(define (render-template file-name context)
+  (foldl (lambda (ctx-cons acc)
+           (string-replace acc (format "{{~a}}" (car ctx-cons)) (cdr ctx-cons)))
+         (file->string (build-path (current-directory) "templates" file-name))
+         (hash->list context)))
+
+; Dockerfile
+; ---------------------
 
 (struct dockerfile (base-image packages working-dir files run cmd))
 
@@ -207,11 +216,13 @@ clientPort=~a")
 
 (define zk-dockerfile
   (let* ([working-dir (string->path "/home/root")]
-         [config-path (build-path working-dir "zoo.cfg")])
+         [config-path (build-path working-dir "zoo.cfg")]
+         [cfg-context (hash "data_dir" (path->string (build-path working-dir ZK_DATA_DIR))
+                            "client_port" (~a ZK_PORT))])
     (dockerfile "alpine:3.5"
                 '("bash" "curl" "openjdk8-jre-base")
                 working-dir
-                (hash "zoo.cfg" (zk-conf working-dir))
+                (hash "zoo.cfg" (render-template "zoo.cfg" cfg-context))
                 (zk-run "3.4.9")
                 (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
 

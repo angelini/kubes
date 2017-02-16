@@ -18,6 +18,7 @@ KUBECTL_BIN="${BIN}/kubectl"
 
 mkdir -p "${BIN}"
 mkdir -p "${DIR}/projects"
+mkdir -p "${DIR}/templates"
 
 if [[ ! -f "${MINIKUBE_BIN}" ]]; then
   curl -Lo "${MINIKUBE_BIN}" "https://storage.googleapis.com/minikube/releases/v${MINIKUBE_VERSION}/minikube-darwin-amd64"

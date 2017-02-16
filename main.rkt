@@ -20,7 +20,7 @@
 (define (exec dir command . args)
   (parameterize ([current-environment-variables env-vars]
                  [current-directory dir])
-    (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f command args))
+    (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-executable-path command) args))
     (subprocess-wait sp)
     (define output (exec-output (subprocess-status sp) (read-all stdout) (read-all stderr)))
     (close-output-port stdin)
@@ -83,8 +83,7 @@
 
 (define (build-container proj-name serv-dir cont)
   (define image-tag (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
-  (define docker-path (find-executable-path "docker"))
-  (exec (build-path serv-dir (container-name cont)) docker-path "build" "-t" image-tag "."))
+  (exec (build-path serv-dir (container-name cont)) "docker" "build" "-t" image-tag "."))
 
 ; Service
 ; ---------------------
@@ -128,12 +127,10 @@
   (map (curry create-container-dir dir) (service-containers serv)))
 
 (define (create-deployment serv-dir)
-  (define kubectl-path (build-path (current-directory) "bin" "kubectl"))
-  (exec serv-dir kubectl-path "create" "-f" "deployment.yml"))
+  (exec serv-dir "kubectl" "create" "-f" "deployment.yml"))
 
 (define (create-service serv-dir)
-  (define kubectl-path (build-path (current-directory) "bin" "kubectl"))
-  (exec serv-dir kubectl-path "create" "-f" "service.yml"))
+  (exec serv-dir "kubectl" "create" "-f" "service.yml"))
 
 ; Project
 ; ---------------------
@@ -175,36 +172,30 @@
        (project-services proj)))
 
 (define (deploy-project proj)
-    (map (lambda (serv)
-           (let ([eo (create-deployment (service-path proj serv))])
-             (if (= 0 (exec-output-code eo))
-                 (display (format "DEPLOYMENT SUCCESS (~a):\n~a\n"
-                                  (service-name serv)
-                                  (exec-output-stdout eo)))
-                 (display (format "DEPLOYMENT ERROR (~a):\n~a\n"
-                                  (service-name serv)
-                                  (exec-output-stderr eo)))))
-           (let ([eo (create-service (service-path proj serv))])
-             (if (= 0 (exec-output-code eo))
-                 (display (format "SERVICE SUCCESS (~a):\n~a\n"
-                                  (service-name serv)
-                                  (exec-output-stdout eo)))
-                 (display (format "SERVICE ERROR (~a):\n~a\n"
-                                  (service-name serv)
-                                  (exec-output-stderr eo))))))
-         (project-services proj)))
+  (map (lambda (serv)
+         (let ([eo (create-deployment (service-path proj serv))])
+           (if (= 0 (exec-output-code eo))
+               (display (format "DEPLOYMENT SUCCESS (~a):\n~a\n"
+                                (service-name serv)
+                                (exec-output-stdout eo)))
+               (display (format "DEPLOYMENT ERROR (~a):\n~a\n"
+                                (service-name serv)
+                                (exec-output-stderr eo)))))
+         (let ([eo (create-service (service-path proj serv))])
+           (if (= 0 (exec-output-code eo))
+               (display (format "SERVICE SUCCESS (~a):\n~a\n"
+                                (service-name serv)
+                                (exec-output-stdout eo)))
+               (display (format "SERVICE ERROR (~a):\n~a\n"
+                                (service-name serv)
+                                (exec-output-stderr eo))))))
+       (project-services proj)))
 
 ; Sample Project
 ; ---------------------
 
 (define ZK_PORT 2181)
 (define ZK_DATA_DIR "zk_data")
-(define ZK_CONF_TMPL
-  "tickTime=2000
-dataDir=~a/~a
-clientPort=~a")
-
-(define (zk-conf working-dir) (format ZK_CONF_TMPL working-dir ZK_DATA_DIR ZK_PORT))
 
 (define (zk-run version)
   (let ([with-version (format "zookeeper-~a" version)])
@@ -226,14 +217,35 @@ clientPort=~a")
                 (zk-run "3.4.9")
                 (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
 
-(define zk-container (container "zookeeper"
-                                "0.0.1"
-                                ZK_PORT
-                                zk-dockerfile))
+(define zk-container (container "zookeeper" "0.0.1" ZK_PORT zk-dockerfile))
 
 (define zk-service (service "zookeeper" 1 (list zk-container) (list (cons ZK_PORT ZK_PORT))))
 
-(define sample-project (project "sample" (list zk-service)))
+(define KAFKA_PORT 9092)
+
+(define (kafka-run version)
+  (let ([with-version (format "kafka_2.11-~a" version)])
+    (list (format "curl -LO http://www-eu.apache.org/dist/kafka/~a/~a.tgz" version with-version)
+          (format "tar xzf ~a.tgz" with-version)
+          (format "mv ~a kafka" with-version)
+          (format "rm ~a.tgz" with-version))))
+
+(define kafka-dockerfile
+  (let* ([working-dir (string->path "/home/root")]
+         [config-path (build-path working-dir "server.properties")])
+    (dockerfile "alpine:3.5"
+                '("bash" "curl" "openjdk8-jre-base")
+                working-dir
+                (hash "server.properties.tmpl" (render-template "server.properties.tmpl" #hash())
+                      "start_kafka.sh" (render-template "start_kafka.sh" #hash()))
+                (kafka-run "0.10.1.0")
+                (list "bash" "start_kafka.sh"))))
+
+(define kafka-container (container "kafka" "0.0.1" KAFKA_PORT kafka-dockerfile))
+
+(define kafka-service (service "kafka" 1 (list kafka-container) (list (cons KAFKA_PORT KAFKA_PORT))))
+
+(define sample-project (project "sample" (list zk-service kafka-service)))
 
 (create-project-dirs sample-project #t)
 ; (build-project sample-project)

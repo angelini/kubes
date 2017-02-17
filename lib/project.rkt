@@ -29,6 +29,8 @@
        (project-services proj)))
 
 (define (deploy-project proj)
+  (exec-raise root-dir "kubectl" "delete" "deployments" "--all")
+  (exec-raise root-dir "kubectl" "delete" "services" "--all")
   (map (lambda (serv)
          (log-output (create-deployment (project-dir proj) serv)
                      (format "DEPLOYMENT SUCCESS (~a):" (service-name serv))

@@ -3,6 +3,7 @@
 (require "constants.rkt")
 
 (provide exec
+         exec-raise
          log-output)
 
 (define (close-ports stdout stdin stderr)
@@ -49,6 +50,17 @@
     (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-executable-path command) args))
     (subprocess-wait sp)
     (define output (exec-output (subprocess-status sp) (read-all stdout) (read-all stderr)))
+    (close-ports stdout stdin stderr)
+    output))
+
+(define (exec-raise dir command . args)
+    (parameterize ([current-environment-variables env-vars]
+                 [current-directory dir])
+    (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-executable-path command) args))
+    (subprocess-wait sp)
+    (define output (if (= 0 (subprocess-status sp))
+                       (read-all stdout)
+                       (error 'exec-error "~a ~a" command (read-all stderr))))
     (close-ports stdout stdin stderr)
     output))
 

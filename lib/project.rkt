@@ -1,6 +1,7 @@
 #lang racket
 
-(require "container.rkt"
+(require "constants.rkt"
+         "container.rkt"
          "exec.rkt"
          "service.rkt")
 
@@ -12,7 +13,7 @@
 (struct project (name services))
 
 (define (project-dir proj)
-  (build-path (current-directory) "projects" (project-name proj)))
+  (build-path root-dir "projects" (project-name proj)))
 
 (define (create-project-dirs proj [overwrite #f])
   (define dir (project-dir proj))

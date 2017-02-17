@@ -1,13 +1,14 @@
 #lang racket
 
-(require "lib/container.rkt"
+(require "lib/constants.rkt"
+         "lib/container.rkt"
          "lib/project.rkt"
          "lib/service.rkt")
 
 (define (render-template file-name context)
   (foldl (lambda (ctx-cons acc)
            (string-replace acc (format "{{~a}}" (car ctx-cons)) (cdr ctx-cons)))
-         (file->string (build-path (current-directory) "templates" file-name))
+         (file->string (build-path root-dir "templates" file-name))
          (hash->list context)))
 
 (define ZK_PORT 2181)

@@ -5,7 +5,7 @@
          "lib/project.rkt"
          "lib/service.rkt")
 
-(define (render-template file-name context)
+(define (render-template file-name [context #hash()])
   (foldl (lambda (ctx-cons acc)
            (string-replace acc (format "{{~a}}" (car ctx-cons)) (cdr ctx-cons)))
          (file->string (build-path root-dir "templates" file-name))
@@ -53,7 +53,7 @@
     (dockerfile "alpine:3.5"
                 '("bash" "curl" "openjdk8-jre-base")
                 working-dir
-                (hash "server.properties.tmpl" (render-template "server.properties.tmpl" #hash())
+                (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
                       "start_kafka.sh" (render-template "start_kafka.sh" #hash()))
                 (kafka-run "0.10.1.0")
                 (list "bash" "start_kafka.sh"))))

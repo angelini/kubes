@@ -37,5 +37,6 @@
                      (format "DEPLOYMENT ERROR (~a):" (service-name serv)))
          (log-output (create-service (project-dir proj) serv)
                      (format "SERVICE SUCCESS (~a):" (service-name serv))
-                     (format "SERVICE ERROR (~a):" (service-name serv))))
+                     (format "SERVICE ERROR (~a):" (service-name serv)))
+         (service-name serv))
        (project-services proj)))

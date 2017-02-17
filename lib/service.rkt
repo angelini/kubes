@@ -17,7 +17,8 @@
   (build-path proj-dir (service-name serv)))
 
 (define (service->deployment-yaml proj-name serv)
-  (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (service-name serv)))
+  (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (service-name serv)
+                                                         "project" proj-name))
                          "spec" (hash "containers" (map (curry container->hash proj-name)
                                                         (service-containers serv)))))
   (define spec (hash "replicas" (service-replicas serv)
@@ -28,10 +29,11 @@
          "metadata" (hash "name" (format "~a-deployment" (service-name serv)))
          "spec" spec)))
 
-(define (service->yaml serv)
+(define (service->yaml proj-name serv)
   (define spec (hash "ports" (map (lambda (p) (hash "port" (car p) "targetPort" (cdr p)))
                                   (service-ports serv))
-                     "selector" (hash "app" (service-name serv))
+                     "selector" (hash "app" (service-name serv)
+                                      "project" proj-name)
                      "type" "NodePort"))
   (yaml->string
    (hash "apiVersion" "v1"
@@ -49,14 +51,15 @@
       (display (service->deployment-yaml proj-name serv) out)))
   (call-with-output-file (build-path dir "service.yml")
     (lambda (out)
-      (display (service->yaml serv) out)))
+      (display (service->yaml proj-name serv) out)))
   (map (curry create-container-dir dir) (service-containers serv)))
 
 (define (build-service-containers proj-name proj-dir serv)
   (map (lambda (cont)
          (log-output (build-container proj-name (service-dir proj-dir serv) cont)
                      (format "BUILD SUCCESS (~a > ~a):" (service-name serv) (container-name cont))
-                     (format "BUILD ERROR (~a > ~a):" (service-name serv) (container-name cont))))
+                     (format "BUILD ERROR (~a > ~a):" (service-name serv) (container-name cont)))
+         (container-tag proj-name cont))
        (service-containers serv)))
 
 (define (create-deployment project-dir serv)

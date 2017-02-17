@@ -4,8 +4,9 @@
 
 (provide build-container
          container
-         container->hash
          container-name
+         container-tag
+         container->hash
          create-container-dir
          dockerfile)
 
@@ -28,6 +29,12 @@
 
 (struct container (name image-version port dockerfile))
 
+(define (container-tag proj-name cont)
+  (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
+
+(define (container-dir serv-dir cont)
+  (build-path serv-dir (container-name cont)))
+
 (define (container->hash proj-name cont)
   (hash "name" (container-name cont)
         "image" (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont))
@@ -44,8 +51,8 @@
   (map (lambda (f) (call-with-output-file (build-path dir (car f))
                      (lambda (out)
                        (display (cdr f) out))))
-       (hash->list (dockerfile-files (container-dockerfile cont)))))
+       (hash->list (dockerfile-files (container-dockerfile cont))))
+  dir)
 
 (define (build-container proj-name serv-dir cont)
-  (define image-tag (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
-  (exec (build-path serv-dir (container-name cont)) "docker" "build" "-t" image-tag "."))
+  (exec (container-dir serv-dir cont) "docker" "build" "-t" (container-tag proj-name cont) "."))

@@ -19,7 +19,9 @@
 (define (service->deployment-yaml proj-name serv)
   (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (service-name serv)
                                                          "project" proj-name))
-                         "spec" (hash "containers" (map (curry container->hash proj-name)
+                         "spec" (hash "containers" (map (lambda (c)
+                                                          (container->hash proj-name c
+                                                                           #:with-ports #t))
                                                         (service-containers serv)))))
   (define spec (hash "replicas" (service-replicas serv)
                      "template" pod-tmpl))

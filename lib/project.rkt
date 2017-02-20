@@ -3,6 +3,7 @@
 (require "constants.rkt"
          "container.rkt"
          "exec.rkt"
+         "job.rkt"
          "service.rkt")
 
 (provide build-project
@@ -10,7 +11,7 @@
          deploy-project
          project)
 
-(struct project (name services))
+(struct project (name services jobs))
 
 (define (project-dir proj)
   (build-path root-dir "projects" (project-name proj)))
@@ -22,21 +23,31 @@
         (delete-directory/files dir)
         (error 'directory-exists "~a" dir)))
   (make-directory dir)
-  (map (curry create-service-dir dir (project-name proj)) (project-services proj)))
+  (append (map (curry create-service-dir dir (project-name proj)) (project-services proj))
+          (map (curry create-job-dir dir (project-name proj)) (project-jobs proj))))
 
 (define (build-project proj)
-  (map (curry build-service-containers (project-name proj) (project-dir proj))
-       (project-services proj)))
+  (append (map (curry build-service-containers (project-name proj) (project-dir proj))
+               (project-services proj))
+          (map (curry build-job-containers (project-name proj) (project-dir proj))
+               (project-jobs proj))))
 
 (define (deploy-project proj)
+  (exec-raise root-dir "kubectl" "delete" "jobs" "--all")
   (exec-raise root-dir "kubectl" "delete" "deployments" "--all")
   (exec-raise root-dir "kubectl" "delete" "services" "--all")
-  (map (lambda (serv)
-         (log-output (create-deployment (project-dir proj) serv)
-                     (format "> deployed ~a" (service-name serv))
-                     (format "> deployment error ~a" (service-name serv)))
-         (log-output (create-service (project-dir proj) serv)
-                     (format "> service created ~a" (service-name serv))
-                     (format "> service error ~a" (service-name serv)))
-         (service-name serv))
-       (project-services proj)))
+  (append (map (lambda (serv)
+                 (log-output (create-deployment (project-dir proj) serv)
+                             (format "> deployed ~a" (service-name serv))
+                             (format "> deployment error ~a" (service-name serv)))
+                 (log-output (create-service (project-dir proj) serv)
+                             (format "> service created ~a" (service-name serv))
+                             (format "> service error ~a" (service-name serv)))
+                 (service-name serv))
+               (project-services proj))
+          (map (lambda (job)
+                 (log-output (create-job (project-dir proj) job)
+                             (format "> started job ~a" (job-name job))
+                             (format "> job start error ~a" (job-name job)))
+                 (job-name job))
+               (project-jobs proj))))

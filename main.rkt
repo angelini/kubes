@@ -2,6 +2,8 @@
 
 (require "lib/constants.rkt"
          "lib/container.rkt"
+         "lib/exec.rkt"
+         "lib/job.rkt"
          "lib/project.rkt"
          "lib/service.rkt")
 
@@ -10,6 +12,11 @@
            (string-replace acc (format "{{~a}}" (car ctx-cons)) (cdr ctx-cons)))
          (file->string (build-path root-dir "templates" file-name))
          (hash->list context)))
+
+(define (jvm-dockerfile working-dir files run cmd)
+  (dockerfile "alpine:3.5"
+              '("bash" "curl" "openjdk8-jre-base")
+              working-dir files run cmd))
 
 (define ZK_PORT 2181)
 (define ZK_DATA_DIR "zk_data")
@@ -27,12 +34,10 @@
          [config-path (build-path working-dir "zoo.cfg")]
          [cfg-context (hash "data_dir" (path->string (build-path working-dir ZK_DATA_DIR))
                             "client_port" (~a ZK_PORT))])
-    (dockerfile "alpine:3.5"
-                '("bash" "curl" "openjdk8-jre-base")
-                working-dir
-                (hash "zoo.cfg" (render-template "zoo.cfg" cfg-context))
-                (zk-run "3.4.9")
-                (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
+    (jvm-dockerfile working-dir
+                    (hash "zoo.cfg" (render-template "zoo.cfg" cfg-context))
+                    (zk-run "3.4.9")
+                    (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
 
 (define zk-container (container "zookeeper" "0.0.1" ZK_PORT zk-dockerfile))
 
@@ -50,20 +55,43 @@
 (define kafka-dockerfile
   (let* ([working-dir (string->path "/home/root")]
          [config-path (build-path working-dir "server.properties")])
-    (dockerfile "alpine:3.5"
-                '("bash" "curl" "openjdk8-jre-base")
-                working-dir
-                (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
-                      "start_kafka.sh" (render-template "start_kafka.sh" #hash()))
-                (kafka-run "0.10.1.0")
-                (list "bash" "start_kafka.sh"))))
+    (jvm-dockerfile working-dir
+                    (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
+                          "start_kafka.sh" (render-template "start_kafka.sh" #hash()))
+                    (kafka-run "0.10.1.0")
+                    (list "bash" "start_kafka.sh"))))
 
 (define kafka-container (container "kafka" "0.0.1" KAFKA_PORT kafka-dockerfile))
 
 (define kafka-service (service "kafka" 1 (list kafka-container) (list (cons KAFKA_PORT KAFKA_PORT))))
 
-(define sample-project (project "sample" (list zk-service kafka-service)))
+(define (producer-files)
+  (define scala-dir (build-path root-dir "scala/producer"))
+  (hash "producer-assembly.jar"
+        (lambda (dir)
+          (exec-raise scala-dir "sbt" "compile" "assembly")
+          (copy-file (build-path scala-dir "target/scala-2.12/producer-assembly-0.0.1.jar")
+                     (build-path dir "producer-assembly.jar")))
+        "data"
+        (lambda (dir)
+          (copy-directory/files (build-path root-dir "data")
+                                (build-path dir "data")))))
 
-(create-project-dirs sample-project #t)
+(define producer-dockerfile
+  (let ([working-dir (string->path "/home/root")])
+    (jvm-dockerfile working-dir
+                    (producer-files)
+                    '()
+                    (list "java" "-jar" "producer-assembly.jar"))))
+
+(define producer-container (container "producer" "0.0.1" #f producer-dockerfile))
+
+(define producer-job (job "producer" (list producer-container)))
+
+(define sample-project (project "sample"
+                                (list zk-service kafka-service)
+                                (list producer-job)))
+
+; (create-project-dirs sample-project #t)
 ; (build-project sample-project)
 ; (deploy-project sample-project)

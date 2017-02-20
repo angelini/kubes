@@ -36,13 +36,13 @@
   (call-with-output-file (build-path dir "job.yml")
     (lambda (out)
       (display (job->yaml proj-name job) out)))
-  (map (curry create-container-dir dir) (job-containers job)))
+  (map (curry create-container-dir dir #:with-command #f) (job-containers job)))
 
 (define (build-job-containers proj-name proj-dir job)
   (map (lambda (cont)
          (log-output (build-container proj-name (job-dir proj-dir job) cont)
-                     (format "BUILD SUCCESS (~a > ~a):" (job-name job) (container-name cont))
-                     (format "BUILD ERROR (~a > ~a):" (job-name job) (container-name cont)))
+                     (format "> build success (~a > ~a)" (job-name job) (container-name cont))
+                     (format "> build error (~a > ~a)" (job-name job) (container-name cont)))
          (container-tag proj-name cont))
        (job-containers job)))
 

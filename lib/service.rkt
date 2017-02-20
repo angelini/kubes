@@ -54,13 +54,13 @@
   (call-with-output-file (build-path dir "service.yml")
     (lambda (out)
       (display (service->yaml proj-name serv) out)))
-  (map (curry create-container-dir dir) (service-containers serv)))
+  (map (curry create-container-dir dir  #:with-command #t) (service-containers serv)))
 
 (define (build-service-containers proj-name proj-dir serv)
   (map (lambda (cont)
          (log-output (build-container proj-name (service-dir proj-dir serv) cont)
-                     (format "BUILD SUCCESS (~a > ~a):" (service-name serv) (container-name cont))
-                     (format "BUILD ERROR (~a > ~a):" (service-name serv) (container-name cont)))
+                     (format "> build success (~a > ~a)" (service-name serv) (container-name cont))
+                     (format "> build error (~a > ~a)" (service-name serv) (container-name cont)))
          (container-tag proj-name cont))
        (service-containers serv)))
 

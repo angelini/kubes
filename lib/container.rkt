@@ -59,14 +59,14 @@
                          (cons "command" (dockerfile-cmd (container-dockerfile cont))))))
   (make-immutable-hash (filter (compose not void?) assocs)))
 
-(define (create-container-dir serv-dir cont)
+(define (create-container-dir serv-dir cont #:with-command [with-command #f])
   (define dir (build-path serv-dir (container-name cont)))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
   (call-with-output-file (build-path dir "Dockerfile")
     (lambda (out)
-      (display (dockerfile->string (container-dockerfile cont)) out)))
+      (display (dockerfile->string (container-dockerfile cont) #:with-command with-command) out)))
   (create-dockerfile-files dir cont)
   dir)
 

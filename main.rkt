@@ -57,7 +57,7 @@
          [config-path (build-path working-dir "server.properties")])
     (jvm-dockerfile working-dir
                     (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
-                          "start_kafka.sh" (render-template "start_kafka.sh" #hash()))
+                          "start_kafka.sh" (render-template "start_kafka.sh"))
                     (kafka-run "0.10.1.0")
                     (list "bash" "start_kafka.sh"))))
 
@@ -67,7 +67,8 @@
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
-  (hash "producer-assembly.jar"
+  (hash "start_producer.sh" (render-template "start_kafka.sh")
+        "producer-assembly.jar"
         (lambda (dir)
           (exec-raise scala-dir "sbt" "compile" "assembly")
           (copy-file (build-path scala-dir "target/scala-2.12/producer-assembly-0.0.1.jar")
@@ -81,8 +82,8 @@
   (let ([working-dir (string->path "/home/root")])
     (jvm-dockerfile working-dir
                     (producer-files)
-                    '()
-                    (list "java" "-jar" "producer-assembly.jar"))))
+                    (kafka-run "0.10.1.0")
+                    (list "bash" "start_producer.sh"))))
 
 (define producer-container (container "producer" "0.0.1" #f producer-dockerfile))
 

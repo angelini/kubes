@@ -1,4 +1,5 @@
 bin/*
+data/*
 projects/*
 zookeeper-*
 kafka_*

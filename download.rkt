@@ -10,8 +10,8 @@
                  "MO" "AMZN" "AEE" "AAL" "AEP" "AXP" "AIG" "AMT" "AWK" "AMP" "ABC" "AME" "AMGN"
                  "APH" "APC" "ADI" "ANTM" "AON" "APA" "AIV" "AAPL" "AMAT" "ADM" "ARNC" "AJG" "AIZ"
                  "T" "ADSK" "ADP" "AN" "AZO" "AVB" "AVY" "BHI" "BLL" "BAC" "BK" "BCR" "BAX" "BBT"
-                 "BDX" "BBBY" "BRK.B" "BBY" "BIIB" "BLK" "HRB" "BA" "BWA" "BXP" "BSX" "BMY" "AVGO"
-                 "BF.B" "CHRW" "CA" "COG" "CPB" "COF" "CAH" "HSIC" "KMX" "CCL" "CAT" "CBG" "CBS"
+                 "BDX" "BBBY" "BRK-B" "BBY" "BIIB" "BLK" "HRB" "BA" "BWA" "BXP" "BSX" "BMY" "AVGO"
+                 "BF-B" "CHRW" "CA" "COG" "CPB" "COF" "CAH" "HSIC" "KMX" "CCL" "CAT" "CBG" "CBS"
                  "CELG" "CNC" "CNP" "CTL" "CERN" "CF" "SCHW" "CHTR" "CHK" "CVX" "CMG" "CB" "CHD"
                  "CI" "XEC" "CINF" "CTAS" "CSCO" "C" "CFG" "CTXS" "CLX" "CME" "CMS" "COH" "KO"
                  "CTSH" "CL" "CMCSA" "CMA" "CAG" "CXO" "COP" "ED" "STZ" "GLW" "COST" "COTY" "CCI"
@@ -56,4 +56,5 @@
                   (format "> error downloading: ~a" ticker))))
 
 (define (download-all from to)
-  (map (lambda (ticker) (download-ticker ticker from to)) SP_500))
+  (map (lambda (ticker) (download-ticker ticker from to)) SP_500)
+  (void))

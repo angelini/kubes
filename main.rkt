@@ -67,7 +67,8 @@
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
-  (hash "start_producer.sh" (render-template "start_kafka.sh")
+  (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
+        "start_producer.sh" (render-template "start_producer.sh")
         "producer-assembly.jar"
         (lambda (dir)
           (exec-raise scala-dir "sbt" "compile" "assembly")
@@ -93,6 +94,7 @@
                                 (list zk-service kafka-service)
                                 (list producer-job)))
 
-; (create-project-dirs sample-project #t)
-; (build-project sample-project)
-; (deploy-project sample-project)
+(define (run-all)
+  (create-project-dirs sample-project #t)
+  (build-project sample-project)
+  (deploy-project sample-project))

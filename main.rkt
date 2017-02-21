@@ -38,9 +38,7 @@
                     (zk-run "3.4.9")
                     (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
 
-(define zk-container (container "zookeeper" "0.0.1" ZK_PORT zk-dockerfile))
-
-(define zk-service (service "zookeeper" 1 (list zk-container) (list (cons ZK_PORT ZK_PORT))))
+(define zk-service (simple-service "zookeeper" "0.0.1" ZK_PORT zk-dockerfile))
 
 (define KAFKA_PORT 9092)
 
@@ -59,9 +57,39 @@
                     (kafka-run "0.10.1.0")
                     (list "bash" "start_kafka.sh"))))
 
-(define kafka-container (container "kafka" "0.0.1" KAFKA_PORT kafka-dockerfile))
+(define kafka-service (simple-service "kafka" "0.0.1" KAFKA_PORT kafka-dockerfile))
 
-(define kafka-service (service "kafka" 1 (list kafka-container) (list (cons KAFKA_PORT KAFKA_PORT))))
+(define SPARK_PORT 7077)
+(define SPARK_WEBUI_PORT 8080)
+(define SPARK_HISTORY_PORT 18080)
+
+(define (spark-run version)
+  (let ([with-version (format "spark-~a" version)])
+    (list (format "curl -Lo ~a.tgz http://d3kbcqa49mib13.cloudfront.net/~a-bin-hadoop2.7.tgz"
+                  with-version with-version)
+          (format "tar xzf ~a.tgz" with-version)
+          (format "mv ~a-bin-hadoop2.7 spark" with-version)
+          (format "rm ~a.tgz" with-version))))
+
+(define (spark-dockerfile cmd)
+  (jvm-dockerfile (hash "SPARK_HOME" (path->string (build-path container-working-dir "spark")))
+                  #hash()
+                  (spark-run "2.1.0")
+                  cmd))
+
+(define spark-master-service
+  (let ([dockerfile (spark-dockerfile '("bash" "spark/sbin/start-master.sh"))])
+    (simple-service "spark-master" "0.0.1" (list SPARK_PORT SPARK_WEBUI_PORT) dockerfile)))
+
+(define spark-worker-service
+  (let ([dockerfile (spark-dockerfile
+                     '("bash" "spark/sbin/start-slave.sh"
+                       "http://${SPARK_SERVICE_SERVICE_HOST}:${SPARK_SERVICE_SERVICE_PORT}"))])
+    (simple-service "spark-worker" "0.0.1" #f dockerfile)))
+
+(define spark-history-service
+  (let ([dockerfile (spark-dockerfile '("bash" "spark/sbin/start-history-server.sh"))])
+    (simple-service "spark-history" "0.0.1" SPARK_HISTORY_PORT dockerfile)))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
@@ -87,8 +115,19 @@
 
 (define producer-job (job "producer" (list producer-container)))
 
+(define max-volume-per-day-dockerfile
+  (jvm-dockerfile #hash()
+                  #hash()
+                  '()
+                  (list "bash")))
+
+(define max-volume-per-day-service
+  (simple-service "max-volume-per-day" "0.0.1" #f max-volume-per-day-dockerfile))
+
 (define sample-project (project "sample"
-                                (list zk-service kafka-service)
+                                (list zk-service kafka-service
+                                      spark-master-service spark-worker-service spark-history-service)
+                                      ; max-vol-per-day-service)
                                 (list producer-job)))
 
 (define (run-all)

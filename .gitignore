@@ -3,5 +3,6 @@ data
 projects
 zookeeper-*
 kafka_*
+spark-*
 .idea
 target

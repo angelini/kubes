@@ -5,11 +5,11 @@
          "exec.rkt")
 
 (provide build-service-containers
-         create-deployment
-         create-service
+         create-deployment-and-service
          create-service-dir
          service
-         service-name)
+         service-name
+         simple-service)
 
 (struct service (name replicas containers ports))
 
@@ -67,8 +67,18 @@
          (container-tag proj-name cont))
        (service-containers serv)))
 
-(define (create-deployment project-dir serv)
-  (exec (service-dir project-dir serv) "kubectl" "create" "-f" "deployment.yml"))
+(define (create-deployment-and-service proj-dir serv)
+  (log-output (exec (service-dir proj-dir serv) "kubectl" "create" "-f" "deployment.yml")
+              (format "> deployed ~a" (service-name serv))
+              (format "> deployment error ~a" (service-name serv)))
+  (when (not (empty? (service-ports serv)))
+    (log-output (exec (service-dir proj-dir serv) "kubectl" "create" "-f" "service.yml")
+                (format "> service created ~a" (service-name serv))
+                (format "> service error ~a" (service-name serv))))
+  (service-name serv))
 
-(define (create-service project-dir serv)
-  (exec (service-dir project-dir serv) "kubectl" "create" "-f" "service.yml"))
+(define (simple-service name image-version ports dockerfile)
+  (define ports-list (or (if (integer? ports) (list ports) ports) '()))
+  (define cont (container name image-version ports-list dockerfile))
+  (define port-pairs (map (lambda (p) (cons p p)) ports-list))
+  (service name 1 (list cont) port-pairs))

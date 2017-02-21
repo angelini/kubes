@@ -46,5 +46,8 @@
          (container-tag proj-name cont))
        (job-containers job)))
 
-(define (create-job project-dir job)
-  (exec (job-dir project-dir job) "kubectl" "create" "-f" "job.yml"))
+(define (create-job proj-dir job)
+  (log-output (exec (job-dir proj-dir job) "kubectl" "create" "-f" "job.yml")
+              (format "> started job ~a" (job-name job))
+              (format "> job start error ~a" (job-name job)))
+  (job-name job))

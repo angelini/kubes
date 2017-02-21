@@ -40,11 +40,7 @@
 
 (define (start-jobs proj)
   (stop-jobs)
-  (map (lambda (job)
-                 (log-output (create-job (project-dir proj) job)
-                             (format "> started job ~a" (job-name job))
-                             (format "> job start error ~a" (job-name job)))
-                 (job-name job))
+  (map (curry create-job (project-dir proj))
        (project-jobs proj)))
 
 (define (teardown-projects)
@@ -54,12 +50,5 @@
 
 (define (deploy-project proj)
   (teardown-projects)
-  (map (lambda (serv)
-                 (log-output (create-deployment (project-dir proj) serv)
-                             (format "> deployed ~a" (service-name serv))
-                             (format "> deployment error ~a" (service-name serv)))
-                 (log-output (create-service (project-dir proj) serv)
-                             (format "> service created ~a" (service-name serv))
-                             (format "> service error ~a" (service-name serv)))
-                 (service-name serv))
-               (project-services proj)))
+  (map (curry create-deployment-and-service (project-dir proj))
+       (project-services proj)))

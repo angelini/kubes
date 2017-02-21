@@ -13,10 +13,10 @@
          (file->string (build-path root-dir "templates" file-name))
          (hash->list context)))
 
-(define (jvm-dockerfile working-dir files run cmd)
+(define (jvm-dockerfile env files run cmd)
   (dockerfile "alpine:3.5"
               '("bash" "curl" "openjdk8-jre-base")
-              working-dir files run cmd))
+              container-working-dir env files run cmd))
 
 (define ZK_PORT 2181)
 (define ZK_DATA_DIR "zk_data")
@@ -30,11 +30,10 @@
           (format "rm ~a.tar.gz" with-version))))
 
 (define zk-dockerfile
-  (let* ([working-dir (string->path "/home/root")]
-         [config-path (build-path working-dir "zoo.cfg")]
-         [cfg-context (hash "data_dir" (path->string (build-path working-dir ZK_DATA_DIR))
+  (let* ([config-path (build-path container-working-dir "zoo.cfg")]
+         [cfg-context (hash "data_dir" (path->string (build-path container-working-dir ZK_DATA_DIR))
                             "client_port" (~a ZK_PORT))])
-    (jvm-dockerfile working-dir
+    (jvm-dockerfile #hash()
                     (hash "zoo.cfg" (render-template "zoo.cfg" cfg-context))
                     (zk-run "3.4.9")
                     (list "bash" "zookeeper/bin/zkServer.sh" "start-foreground" (path->string config-path)))))
@@ -53,9 +52,8 @@
           (format "rm ~a.tgz" with-version))))
 
 (define kafka-dockerfile
-  (let* ([working-dir (string->path "/home/root")]
-         [config-path (build-path working-dir "server.properties")])
-    (jvm-dockerfile working-dir
+  (let ([config-path (build-path container-working-dir "server.properties")])
+    (jvm-dockerfile #hash()
                     (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
                           "start_kafka.sh" (render-template "start_kafka.sh"))
                     (kafka-run "0.10.1.0")
@@ -80,11 +78,10 @@
                                 (build-path dir "data")))))
 
 (define producer-dockerfile
-  (let ([working-dir (string->path "/home/root")])
-    (jvm-dockerfile working-dir
-                    (producer-files)
-                    (kafka-run "0.10.1.0")
-                    (list "bash" "start_producer.sh"))))
+  (jvm-dockerfile #hash()
+                  (producer-files)
+                  (kafka-run "0.10.1.0")
+                  (list "bash" "start_producer.sh")))
 
 (define producer-container (container "producer" "0.0.1" #f producer-dockerfile))
 

@@ -10,7 +10,7 @@
          create-container-dir
          dockerfile)
 
-(struct dockerfile (base-image packages working-dir files run cmd))
+(struct dockerfile (base-image packages working-dir env files run cmd))
 
 (define (dockerfile->string dfile #:with-command [with-command #f])
   (define lines (list (format "FROM ~a" (dockerfile-base-image dfile))
@@ -18,6 +18,9 @@
                              (string-join (dockerfile-packages dfile) " \\\n    "))
                      (format "RUN mkdir -p ~a" (dockerfile-working-dir dfile))
                      (format "WORKDIR ~a" (dockerfile-working-dir dfile))
+                     (string-join (map (lambda (t) (format "ENV ~a ~a" (car t) (cdr t)))
+                                       (hash->list (dockerfile-env dfile)))
+                                  "\n")
                      (string-join (map (lambda (f) (format "COPY ~a ./~a" f f))
                                        (hash-keys (dockerfile-files dfile)))
                                   "\n")

@@ -42,8 +42,7 @@
                    (display gen-or-contents out))))))
        (hash->list (dockerfile-files (container-dockerfile cont)))))
 
-
-(struct container (name image-version port dockerfile))
+(struct container (name image-version ports dockerfile))
 
 (define (container-tag proj-name cont)
   (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
@@ -57,7 +56,8 @@
                                              proj-name
                                              (container-name cont) (container-image-version cont)))
                        (when with-ports
-                         (cons "ports" (list (hash "containerPort" (container-port cont)))))
+                         (cons "ports" (map (lambda (p) (hash "containerPort" p))
+                                            (container-ports cont))))
                        (when with-command
                          (cons "command" (dockerfile-cmd (container-dockerfile cont))))))
   (make-immutable-hash (filter (compose not void?) assocs)))

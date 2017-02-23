@@ -14,8 +14,8 @@
          (hash->list context)))
 
 (define (jvm-dockerfile env files run cmd)
-  (dockerfile "alpine:3.5"
-              '("bash" "curl" "openjdk8-jre-base" "procps")
+  (dockerfile "ubuntu:16.10"
+              '("curl" "openjdk-8-jre-headless")
               container-working-dir env files run cmd))
 
 (define ZK_PORT 2181)
@@ -73,18 +73,18 @@
 
 (define (spark-dockerfile cmd)
   (jvm-dockerfile (hash "SPARK_HOME" (path->string (build-path container-working-dir "spark")))
-                  #hash()
+                  (hash "start_spark_master.sh" (render-template "start_spark_master.sh"))
                   (spark-run "2.1.0")
                   cmd))
 
 (define spark-master-service
-  (let ([dockerfile (spark-dockerfile '("bash" "spark/sbin/start-master.sh"))])
+  (let ([dockerfile (spark-dockerfile '("bash" "start_spark_master.sh"))])
     (simple-service "spark-master" "0.0.1" (list SPARK_PORT SPARK_WEBUI_PORT) dockerfile)))
 
 (define spark-worker-service
   (let ([dockerfile (spark-dockerfile
                      '("bash" "spark/sbin/start-slave.sh"
-                       "http://${SPARK_SERVICE_SERVICE_HOST}:${SPARK_SERVICE_SERVICE_PORT}"))])
+                       "http://${SPARK_MASTER_SERVICE_SERVICE_HOST}:${SPARK_MASTER_SERVICE_SERVICE_PORT}"))])
     (simple-service "spark-worker" "0.0.1" #f dockerfile)))
 
 (define spark-history-service
@@ -129,8 +129,9 @@
 
 (define sample-project (project "sample"
                                 (list zk-service kafka-service
-                                      spark-master-service spark-worker-service spark-history-service)
-                                      ; max-vol-per-day-service)
+                                      spark-master-service spark-worker-service spark-history-service
+                                      ; max-vol-per-day-service
+                                      )
                                 (list producer-job)))
 
 (define (run-all)

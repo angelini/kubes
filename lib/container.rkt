@@ -14,8 +14,11 @@
 
 (define (dockerfile->string dfile #:with-command [with-command #f])
   (define lines (list (format "FROM ~a" (dockerfile-base-image dfile))
-                     (format "RUN apk add --no-cache \\\n    ~a"
-                             (string-join (dockerfile-packages dfile) " \\\n    "))
+                      (string-join (list "RUN apt-get update \\"
+                                         (format " && apt-get install -y ~a \\"
+                                                 (string-join (dockerfile-packages dfile) " "))
+                                         " && rm -rf /var/lib/apt/lists/*")
+                                   "\n")
                      (format "RUN mkdir -p ~a" (dockerfile-working-dir dfile))
                      (format "WORKDIR ~a" (dockerfile-working-dir dfile))
                      (string-join (map (lambda (t) (format "ENV ~a ~a" (car t) (cdr t)))

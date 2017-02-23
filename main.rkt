@@ -102,7 +102,10 @@
                      (build-path dir "producer-assembly.jar")))
         "data"
         (lambda (dir)
-          (copy-directory/files (build-path root-dir "data")
+          (define data-dir (build-path root-dir "data"))
+          (when (empty? data-dir)
+            (error 'missing-data-files "~a" data-dir))
+          (copy-directory/files data-dir
                                 (build-path dir "data")))))
 
 (define producer-dockerfile

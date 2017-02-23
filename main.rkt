@@ -15,7 +15,7 @@
 
 (define (jvm-dockerfile env files run cmd)
   (dockerfile "alpine:3.5"
-              '("bash" "curl" "openjdk8-jre-base")
+              '("bash" "curl" "openjdk8-jre-base" "procps")
               container-working-dir env files run cmd))
 
 (define ZK_PORT 2181)

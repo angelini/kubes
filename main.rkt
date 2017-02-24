@@ -73,7 +73,8 @@
 
 (define (spark-dockerfile cmd)
   (jvm-dockerfile (hash "SPARK_HOME" (path->string (build-path container-working-dir "spark")))
-                  (hash "start_spark_master.sh" (render-template "start_spark_master.sh"))
+                  (hash "start_spark_master.sh" (render-template "start_spark_master.sh")
+                        "start_spark_worker.sh" (render-template "start_spark_worker.sh"))
                   (spark-run "2.1.0")
                   cmd))
 
@@ -82,14 +83,8 @@
     (simple-service "spark-master" "0.0.1" (list SPARK_PORT SPARK_WEBUI_PORT) dockerfile)))
 
 (define spark-worker-service
-  (let ([dockerfile (spark-dockerfile
-                     '("bash" "spark/sbin/start-slave.sh"
-                       "http://${SPARK_MASTER_SERVICE_SERVICE_HOST}:${SPARK_MASTER_SERVICE_SERVICE_PORT}"))])
+  (let ([dockerfile (spark-dockerfile '("bash" "start_spark_worker.sh"))])
     (simple-service "spark-worker" "0.0.1" #f dockerfile)))
-
-(define spark-history-service
-  (let ([dockerfile (spark-dockerfile '("bash" "spark/sbin/start-history-server.sh"))])
-    (simple-service "spark-history" "0.0.1" SPARK_HISTORY_PORT dockerfile)))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
@@ -129,7 +124,7 @@
 
 (define sample-project (project "sample"
                                 (list zk-service kafka-service
-                                      spark-master-service spark-worker-service spark-history-service
+                                      spark-master-service spark-worker-service
                                       ; max-vol-per-day-service
                                       )
                                 (list producer-job)))

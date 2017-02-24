@@ -83,8 +83,9 @@
     (simple-service "spark-master" "0.0.1" (list SPARK_PORT SPARK_WEBUI_PORT) dockerfile)))
 
 (define spark-worker-service
-  (let ([dockerfile (spark-dockerfile '("bash" "start_spark_worker.sh"))])
-    (simple-service "spark-worker" "0.0.1" #f dockerfile)))
+  (let* ([df (spark-dockerfile '("bash" "start_spark_worker.sh"))]
+         [cont (container "spark-worker" "0.0.1" '() df)])
+    (service "spark-worker" 3 (list cont) '())))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))

@@ -61,21 +61,39 @@
 
 (define (build-service-containers proj-name proj-dir serv)
   (map (lambda (cont)
-         (log-output (build-container proj-name (service-dir proj-dir serv) cont)
-                     (format "> build success (~a > ~a)" (service-name serv) (container-name cont))
-                     (format "> build error (~a > ~a)" (service-name serv) (container-name cont)))
+         (displayln (format "> build service container: ~a > ~a" (service-name serv) (container-name cont)))
+         (build-container proj-name (service-dir proj-dir serv) cont)
          (container-tag proj-name cont))
        (service-containers serv)))
 
-(define (create-deployment-and-service proj-dir serv)
-  (log-output (exec (service-dir proj-dir serv) "kubectl" "create" "-f" "deployment.yml")
-              (format "> deployed ~a" (service-name serv))
-              (format "> deployment error ~a" (service-name serv)))
-  (when (not (empty? (service-ports serv)))
-    (log-output (exec (service-dir proj-dir serv) "kubectl" "create" "-f" "service.yml")
-                (format "> service created ~a" (service-name serv))
-                (format "> service error ~a" (service-name serv))))
+(define (create-deployment proj-name proj-dir serv)
+  (displayln (format "> create deployment: ~a" (service-name serv)))
+  (exec-streaming (service-dir proj-dir serv) "kubectl" "--namespace" proj-name "create" "-f" "deployment.yml")
   (service-name serv))
+
+(define (create-service proj-name proj-dir serv)
+  (when (not (empty? (service-ports serv)))
+    (displayln (format "> create service: ~a" (service-name serv)))
+    (exec-streaming (service-dir proj-dir serv) "kubectl" "--namespace" proj-name "create" "-f" "service.yml"))
+  (service-name serv))
+
+(define (delete-deployment proj-name serv)
+  (when (exec-stdout root-dir
+                     "kubectl" "get" "deployment" (deployment-name serv)
+                     "--namespace" proj-name)
+    (displayln (format "> delete deployment: ~a" (deployment-name serv)))
+    (exec-raise root-dir
+                "kubectl" "delete" "deployment" (deployment-name serv)
+                "--namespace" proj-name)))
+
+(define (delete-service proj-name serv)
+  (when (exec-stdout root-dir
+                     "kubectl" "get" "service" (service-name serv)
+                     "--namespace" proj-name)
+    (displayln (format "> delete service: ~a" (deployment-name serv)))
+    (exec-raise root-dir
+                "kubectl" "delete" "service" (service-name serv)
+                "--namespace" proj-name)))
 
 (define (simple-service name image-version ports dockerfile)
   (define ports-list (or (if (integer? ports) (list ports) ports) '()))

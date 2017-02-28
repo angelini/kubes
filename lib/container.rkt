@@ -77,4 +77,4 @@
   dir)
 
 (define (build-container proj-name serv-dir cont)
-  (exec (container-dir serv-dir cont) "docker" "build" "-t" (container-tag proj-name cont) "."))
+  (exec-streaming (container-dir serv-dir cont) "docker" "build" "-t" (container-tag proj-name cont) "."))

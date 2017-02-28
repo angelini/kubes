@@ -1,8 +1,10 @@
+.idea
 bin
 data
-projects
-zookeeper-*
+derby.log
 kafka_*
+metastore_db
+projects
 spark-*
-.idea
 target
+zookeeper-*

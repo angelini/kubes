@@ -4,6 +4,7 @@
 
 (provide exec
          exec-raise
+         exec-streaming
          log-output)
 
 (define (close-ports stdout stdin stderr)
@@ -52,6 +53,25 @@
     (define output (exec-output (subprocess-status sp) (read-all stdout) (read-all stderr)))
     (close-ports stdout stdin stderr)
     output))
+
+(define (stream-print port)
+  (let loop ([s (read-string 1 port)])
+    (if (eof-object? s)
+        (displayln "")
+        (begin (display s)
+               (loop (read-string 1 port))))))
+
+(define (exec-streaming dir command . args)
+  (parameterize ([current-environment-variables env-vars]
+                 [current-directory dir])
+    (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-executable-path command) args))
+    (stream-print stdout)
+    (subprocess-wait sp)
+    (when (not (= 0 (subprocess-status sp)))
+      (displayln (read-all stderr))
+      (error 'exec-error "$ ~a ~a ~a" dir command args))
+    (close-ports stdout stdin stderr)
+    (void)))
 
 (define (exec-raise dir command . args)
     (parameterize ([current-environment-variables env-vars]

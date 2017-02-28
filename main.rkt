@@ -93,7 +93,8 @@
         "start_producer.sh" (render-template "start_producer.sh")
         "producer-assembly.jar"
         (lambda (dir)
-          (exec-raise scala-dir "sbt" "compile" "assembly")
+          (displayln (format "> sbt compile: ~a" dir))
+          (exec-streaming scala-dir "sbt" "compile" "assembly")
           (copy-file (build-path scala-dir "target/scala-2.12/producer-assembly-0.0.1.jar")
                      (build-path dir "producer-assembly.jar")))
         "data"

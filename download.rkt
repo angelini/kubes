@@ -50,10 +50,10 @@
 (define (download-ticker ticker from to)
   (define output-file (build-path root-dir (format "data/~a_~a_~a.csv" ticker from to)))
   (if (file-exists? output-file)
-      (displayln (format "> skipping ~a" (path->string output-file)))
-      (log-output (exec root-dir "curl" "-Lo" output-file (download-uri ticker from to))
-                  (format "> downloaded ~a" ticker)
-                  (format "> error downloading: ~a" ticker))))
+      (displayln (format "> skip: ~a" (path->string output-file)))
+      (begin
+        (displayln (format "> download: ~a" ticker))
+        (exec-streaming root-dir "curl" "-Lo" output-file (download-uri ticker from to)))))
 
 (define (download-all from to)
   (map (lambda (ticker) (download-ticker ticker from to)) SP_500)

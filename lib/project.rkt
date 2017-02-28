@@ -4,7 +4,8 @@
          "container.rkt"
          "exec.rkt"
          "job.rkt"
-         "service.rkt")
+         "service.rkt"
+         "utils.rkt")
 
 (provide build-project
          create-project-dirs

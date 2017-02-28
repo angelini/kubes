@@ -40,9 +40,7 @@
          (match-let ([(cons name gen-or-contents) f])
            (if (procedure? gen-or-contents)
                (gen-or-contents cont-dir)
-               (call-with-output-file (build-path cont-dir name)
-                 (lambda (out)
-                   (display gen-or-contents out))))))
+               (write-file cont-dir name gen-or-contents))))
        (hash->list (dockerfile-files (container-dockerfile cont)))))
 
 (struct container (name image-version ports dockerfile))
@@ -70,9 +68,8 @@
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
-  (call-with-output-file (build-path dir "Dockerfile")
-    (lambda (out)
-      (display (dockerfile->string (container-dockerfile cont) #:with-command with-command) out)))
+  (write-file dir "Dockerfile"
+              (dockerfile->string (container-dockerfile cont) #:with-command with-command))
   (create-dockerfile-files dir cont)
   dir)
 

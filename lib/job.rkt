@@ -2,7 +2,8 @@
 
 (require yaml
          "container.rkt"
-         "exec.rkt")
+         "exec.rkt"
+         "utils.rkt")
 
 (provide build-job-containers
          create-job
@@ -33,10 +34,8 @@
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
-  (call-with-output-file (build-path dir "job.yml")
-    (lambda (out)
-      (display (job->yaml proj-name job) out)))
   (map (curry create-container-dir dir #:with-command #f) (job-containers job)))
+  (write-file dir "job.yml" (job->yaml proj-name job))
 
 (define (build-job-containers proj-name proj-dir job)
   (map (lambda (cont)

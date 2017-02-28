@@ -2,7 +2,8 @@
 
 (require yaml
          "container.rkt"
-         "exec.rkt")
+         "exec.rkt"
+         "utils.rkt")
 
 (provide build-service-containers
          create-deployment-and-service
@@ -50,14 +51,9 @@
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
-  (call-with-output-file (build-path dir "deployment.yml")
-    (lambda (out)
-      (display (service->deployment-yaml proj-name serv) out)))
+  (write-file dir "deployment.yml" (service->deployment-yaml proj-name serv shasum))
   (when (not (empty? (service-ports serv)))
-    (call-with-output-file (build-path dir "service.yml")
-      (lambda (out)
-        (display (service->yaml proj-name serv) out))))
-  (map (curry create-container-dir dir  #:with-command #t) (service-containers serv)))
+    (write-file dir "service.yml" (service->yaml proj-name serv))))
 
 (define (build-service-containers proj-name proj-dir serv)
   (map (lambda (cont)

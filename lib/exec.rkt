@@ -4,6 +4,7 @@
 
 (provide exec
          exec-raise
+         exec-stdout
          exec-streaming
          log-output)
 
@@ -72,6 +73,12 @@
       (error 'exec-error "$ ~a ~a ~a" dir command args))
     (close-ports stdout stdin stderr)
     (void)))
+
+(define (exec-stdout dir command . args)
+  (define output (apply exec dir command args))
+  (if (= 0 (exec-output-code output))
+      (exec-output-stdout output)
+      #f))
 
 (define (exec-raise dir command . args)
     (parameterize ([current-environment-variables env-vars]

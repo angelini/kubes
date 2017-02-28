@@ -3,8 +3,8 @@
 set -x
 
 cat ./server.properties.tmpl |
-  sed -e "s/{{ZK_HOST}}/${ZOOKEEPER_SERVICE_SERVICE_HOST}/g" \
-      -e "s/{{ZK_PORT}}/${ZOOKEEPER_SERVICE_SERVICE_PORT}/g" \
+  sed -e "s/{{ZK_HOST}}/${ZOOKEEPER_SERVICE_HOST}/g" \
+      -e "s/{{ZK_PORT}}/${ZOOKEEPER_SERVICE_PORT}/g" \
       > server.properties
 
 exec kafka/bin/kafka-server-start.sh server.properties

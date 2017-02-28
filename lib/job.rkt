@@ -31,11 +31,13 @@
 
 (define (create-job-dir proj-dir proj-name job)
   (define dir (build-path proj-dir (job-name job)))
+  (define containers-dir (build-path dir "containers"))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
-  (map (curry create-container-dir dir #:with-command #f) (job-containers job)))
+  (make-directory containers-dir)
   (write-file dir "job.yml" (job->yaml proj-name job))
+  (map (curry create-container-dir containers-dir #:with-command #f) (job-containers job)))
 
 (define (build-job-containers proj-name proj-dir job)
   (map (lambda (cont)

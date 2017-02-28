@@ -1,25 +1,35 @@
 #lang racket
 
 (require yaml
+         "cache.rkt"
+         "constants.rkt"
          "container.rkt"
          "exec.rkt"
          "utils.rkt")
 
 (provide build-service-containers
-         create-deployment-and-service
+         create-deployment
+         create-service
          create-service-dir
+         delete-deployment
+         delete-service
+         deployment-name
          service
+         service-dir
          service-name
          simple-service)
 
 (struct service (name replicas containers ports))
 
+(define (deployment-name serv)
+  (format "~a-deployment" (service-name serv)))
+
 (define (service-dir proj-dir serv)
   (build-path proj-dir (service-name serv)))
 
-(define (service->deployment-yaml proj-name serv)
+(define (service->deployment-yaml proj-name serv shasum)
   (define pod-tmpl (hash "metadata" (hash "labels" (hash "app" (service-name serv)
-                                                         "project" proj-name))
+                                                         "namespace" proj-name))
                          "spec" (hash "containers" (map (lambda (c)
                                                           (container->hash proj-name c
                                                                            #:with-ports #t))
@@ -29,7 +39,8 @@
   (yaml->string
    (hash "apiVersion" "extensions/v1beta1"
          "kind" "Deployment"
-         "metadata" (hash "name" (format "~a-deployment" (service-name serv)))
+         "metadata" (hash "name" (deployment-name serv)
+                          "annotations" (hash "shasum" shasum))
          "spec" spec)))
 
 (define (service->yaml proj-name serv)
@@ -38,19 +49,23 @@
                                                     "targetPort" (cdr p)))
                                   (service-ports serv))
                      "selector" (hash "app" (service-name serv)
-                                      "project" proj-name)
+                                      "namespace" proj-name)
                      "type" "NodePort"))
   (yaml->string
    (hash "apiVersion" "v1"
          "kind" "Service"
-         "metadata" (hash "name" (format "~a-service" (service-name serv)))
+         "metadata" (hash "name" (format "~a" (service-name serv)))
          "spec" spec)))
 
 (define (create-service-dir proj-dir proj-name serv)
   (define dir (build-path proj-dir (service-name serv)))
+  (define containers-dir (build-path dir "containers"))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
+  (make-directory containers-dir)
+  (map (curry create-container-dir containers-dir  #:with-command #t) (service-containers serv))
+  (define shasum (shasum-dir containers-dir))
   (write-file dir "deployment.yml" (service->deployment-yaml proj-name serv shasum))
   (when (not (empty? (service-ports serv)))
     (write-file dir "service.yml" (service->yaml proj-name serv))))

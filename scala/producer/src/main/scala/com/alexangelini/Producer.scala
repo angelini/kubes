@@ -39,14 +39,14 @@ object Producer extends App {
   }
 
   val props = new Properties()
-  props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, s"${sys.env("KAFKA_SERVICE_SERVICE_HOST")}:${sys.env("KAFKA_SERVICE_SERVICE_PORT")}")
+  props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, s"${sys.env("KAFKA_SERVICE_HOST")}:${sys.env("KAFKA_SERVICE_PORT")}")
   // props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "192.168.64.4:30711")
   props.put(ProducerConfig.CLIENT_ID_CONFIG, "ScalaProducerExample")
   props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG , "org.apache.kafka.common.serialization.StringSerializer")
   props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
 
   val producer = new KafkaProducer[String, String](props)
-  println(s"started ${sys.env("KAFKA_SERVICE_SERVICE_HOST")}:${sys.env("KAFKA_SERVICE_SERVICE_PORT")}")
+  println(s"started ${sys.env("KAFKA_SERVICE_HOST")}:${sys.env("KAFKA_SERVICE_PORT")}")
 
   val records = readYahooFinanceFiles()
     .map({ case (ticker, row) => new ProducerRecord("sample_topic", ticker, rowToJson(row)) })

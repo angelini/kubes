@@ -42,9 +42,9 @@
 
 (define KAFKA_PORT 9092)
 
-(define (kafka-run version)
-  (let ([with-version (format "kafka_2.11-~a" version)])
-    (list (format "curl -LO http://www-eu.apache.org/dist/kafka/~a/~a.tgz" version with-version)
+(define (kafka-run kafka-version scala-version)
+  (let ([with-version (format "kafka_~a-~a" scala-version kafka-version)])
+    (list (format "curl -LO http://www-eu.apache.org/dist/kafka/~a/~a.tgz" kafka-version with-version)
           (format "tar xzf ~a.tgz" with-version)
           (format "mv ~a kafka" with-version)
           (format "rm ~a.tgz" with-version))))
@@ -54,7 +54,7 @@
     (jvm-dockerfile #hash()
                     (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
                           "start_kafka.sh" (render-template "start_kafka.sh"))
-                    (kafka-run "0.10.1.0")
+                    (kafka-run "0.10.1.0" "2.11")
                     (list "bash" "start_kafka.sh"))))
 
 (define kafka-service (simple-service "kafka" "0.0.1" KAFKA_PORT kafka-dockerfile))
@@ -85,7 +85,7 @@
 (define spark-worker-service
   (let* ([df (spark-dockerfile '("bash" "start_spark_worker.sh"))]
          [cont (container "spark-worker" "0.0.1" '() df)])
-    (service "spark-worker" 3 (list cont) '())))
+    (service "spark-worker" 1 (list cont) '())))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
@@ -108,7 +108,7 @@
 (define producer-dockerfile
   (jvm-dockerfile #hash()
                   (producer-files)
-                  (kafka-run "0.10.1.0")
+                  (kafka-run "0.10.1.0" "2.11")
                   (list "bash" "start_producer.sh")))
 
 (define producer-container (container "producer" "0.0.1" #f producer-dockerfile))

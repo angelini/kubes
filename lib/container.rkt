@@ -1,6 +1,7 @@
 #lang racket
 
-(require "exec.rkt")
+(require "exec.rkt"
+         "utils.rkt")
 
 (provide build-container
          container
@@ -49,7 +50,7 @@
   (format "~a/~a:~a" proj-name (container-name cont) (container-image-version cont)))
 
 (define (container-dir serv-dir cont)
-  (build-path serv-dir (container-name cont)))
+  (build-path serv-dir "containers" (container-name cont)))
 
 (define (container->hash proj-name cont #:with-ports [with-ports #f] #:with-command [with-command #f])
   (define assocs (list (cons "name" (container-name cont))

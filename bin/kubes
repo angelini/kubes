@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMAND="$(${DIR}/../scripts/kubes_commands.rkt "$@" 2>&1)"
+
+if [[ $? -eq 0 ]]; then
+  exec ${COMMAND//\"}
+else
+  echo "${COMMAND}"
+fi

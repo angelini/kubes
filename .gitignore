@@ -1,5 +1,7 @@
 .idea
-bin
+bin/minikube
+bin/kubectl
+bin/docker-machine-driver-kvm
 data
 derby.log
 kafka_*

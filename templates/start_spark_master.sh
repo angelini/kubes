@@ -2,6 +2,7 @@
 
 set -x
 
+unset SPARK_MASTER_PORT
 spark/sbin/start-master.sh
 
 find spark/logs -name "*$(hostname)*.out" |

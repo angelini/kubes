@@ -17,10 +17,10 @@ BIN="${DIR}/bin"
 
 PLATFORM="$(uname | awk '{print tolower($0)}')"
 
-MINIKUBE_VERSION="0.16.0"
+MINIKUBE_VERSION="0.17.1"
 MINIKUBE_BIN="${BIN}/minikube"
 
-KUBECTL_VERSION="1.5.3"
+KUBECTL_VERSION="1.5.4"
 KUBECTL_BIN="${BIN}/kubectl"
 
 DOCKER_KVM_VERSION="0.7.0"

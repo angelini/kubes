@@ -25,12 +25,12 @@
                      (string-join (map (lambda (t) (format "ENV ~a ~a" (car t) (cdr t)))
                                        (hash->list (dockerfile-env dfile)))
                                   "\n")
-                     (string-join (map (lambda (f) (format "COPY ~a ./~a" f f))
-                                       (hash-keys (dockerfile-files dfile)))
-                                  "\n")
                      (when (not (empty? (dockerfile-run dfile)))
                        (format "RUN ~a"
                                (string-join (dockerfile-run dfile) " \\\n && ")))
+                     (string-join (map (lambda (f) (format "COPY ~a ./~a" f f))
+                                       (hash-keys (dockerfile-files dfile)))
+                                  "\n")
                      (when with-command
                        (format "CMD [\"~a\"]"
                              (string-join (dockerfile-cmd dfile) "\", \"")))))

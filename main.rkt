@@ -40,6 +40,18 @@
 
 (define zk-service (simple-service "zookeeper" "0.0.1" ZK_PORT zk-dockerfile))
 
+(define MINIO_PORT 9000)
+
+(define minio-dockerfile
+  (jvm-dockerfile #hash()
+                  #hash()
+                  (list "mkdir storage"
+                        "curl -LO https://dl.minio.io/server/minio/release/linux-amd64/minio"
+                        "chmod +x minio")
+                  (list "./minio" "server" "~/storage")))
+
+(define minio-service (simple-service "minio" "0.0.1" MINIO_PORT minio-dockerfile))
+
 (define KAFKA_PORT 9092)
 
 (define (kafka-run kafka-version scala-version)
@@ -85,7 +97,7 @@
 (define spark-worker-service
   (let* ([df (spark-dockerfile '("bash" "start_spark_worker.sh"))]
          [cont (container "spark-worker" "0.0.1" '() df)])
-    (service "spark-worker" 1 (list cont) '())))
+    (service "spark-worker" 2 (list cont) '())))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
@@ -115,6 +127,17 @@
 
 (define producer-job (job "producer" (list producer-container)))
 
+(define kafka-connect-dockerfile
+  (jvm-dockerfile #hash()
+                  (hash "s3.properties.tmpl" (render-template "s3.properties.tmpl")
+                        "start_kafka_connect.sh" (render-template "start_kafka_connect.sh"))
+                  (kafka-run "0.10.1.0" "2.11")
+                  (list "bash" "start_kafka_connect.sh")))
+
+(define kafka-connect-container (container "kafka-connect" "0.0.1" #f kafka-connect-dockerfile))
+
+(define kafka-connect-job (job "kafka-connect" (list kafka-connect-container)))
+
 (define max-volume-per-day-dockerfile
   (jvm-dockerfile #hash()
                   #hash()
@@ -125,11 +148,11 @@
   (simple-service "max-volume-per-day" "0.0.1" #f max-volume-per-day-dockerfile))
 
 (define sample-project (project "sample"
-                                (list zk-service kafka-service
+                                (list zk-service minio-service kafka-service
                                       spark-master-service spark-worker-service
                                       ; max-vol-per-day-service
                                       )
-                                (list producer-job)))
+                                (list producer-job kafka-connect-job)))
 
 (define (run-all)
   (create-project-dirs sample-project #t)

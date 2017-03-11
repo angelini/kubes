@@ -1,0 +1,7 @@
+name=s3-sink
+tasks.max=1
+topics=sample_topic
+flush.size=3
+s3.bucket=example
+s3.endpoint=http://{{MINIO_HOST}}:{{MINIO_PORT}}
+hadoop.conf.dir=

@@ -59,6 +59,7 @@
   (exec-raise root-dir "kubectl" "--namespace" (project-name proj) "delete" "services" "--all"))
 
 (define (deploy-project proj)
+  (stop-jobs proj)
   (define proj-dir (project-dir proj))
   (define proj-name (project-name proj))
   (if (has-namespace-changed? proj-name)

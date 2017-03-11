@@ -4,9 +4,9 @@ bin/kubectl
 bin/docker-machine-driver-kvm
 data
 derby.log
-kafka_*
 metastore_db
 projects
-spark-*
+spark/*
+kafka/*
 target
 zookeeper-*

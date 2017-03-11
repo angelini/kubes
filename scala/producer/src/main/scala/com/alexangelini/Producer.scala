@@ -41,7 +41,7 @@ object Producer extends App {
   val props = new Properties()
   props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, s"${sys.env("KAFKA_SERVICE_HOST")}:${sys.env("KAFKA_SERVICE_PORT")}")
   // props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "192.168.64.4:30711")
-  props.put(ProducerConfig.CLIENT_ID_CONFIG, "ScalaProducerExample")
+  props.put(ProducerConfig.CLIENT_ID_CONFIG, "Producer")
   props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG , "org.apache.kafka.common.serialization.StringSerializer")
   props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer")
 
@@ -53,8 +53,9 @@ object Producer extends App {
 
   for (record <- records) {
     producer.send(record)
-    println(s"sent ${record}")
+    producer.flush()
   }
 
+  producer.close()
   println("done")
 }

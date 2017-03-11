@@ -19,6 +19,10 @@
   (define pod (car (pods-list namespace app)))
   (format "kubectl --namespace=~a exec -it ~a -- bash" namespace pod))
 
+(define (follow-logs-from-pod namespace app)
+  (define pod (car (pods-list namespace app)))
+  (format "kubectl --namespace=~a logs -f ~a" namespace pod))
+
 (define (print-usage)
   (display "bin/kubes allows you to interact with a runnings kubes project
 
@@ -27,6 +31,7 @@ Usage:
 
 Available Commands:
   connect    Connect to a bash shell on a random running pod
+  logs       Follow logs from a random pod within the specified app
 "))
 
 (define (run)
@@ -37,6 +42,7 @@ Available Commands:
                                             (cdr cli-args))))
   (case command
     [("connect") (apply connect-to-pod args)]
+    [("logs") (apply follow-logs-from-pod args)]
     [else (begin (print-usage)
                  (exit 1))]))
 

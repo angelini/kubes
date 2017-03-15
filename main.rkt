@@ -15,8 +15,8 @@
 
 (define (jvm-dockerfile env files run cmd)
   (dockerfile "ubuntu:16.10"
-              '("curl" "openjdk-8-jre-headless")
-              container-working-dir env files run cmd))
+              '("curl" "less" "openjdk-8-jre-headless")
+              container-working-dir (hash-set env "TERM" "xterm") files run cmd))
 
 (define ZK_PORT 2181)
 (define ZK_DATA_DIR "zk_data")

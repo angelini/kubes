@@ -99,6 +99,28 @@
          [cont (container "spark-worker" "0.0.1" '() df)])
     (service "spark-worker" 2 (list cont) '())))
 
+(define ZEPPELIN_PORT 8080)
+
+(define (zeppelin-run version)
+  (let ([with-version (format "zeppelin-~a" version)])
+    (list (format "curl -Lo ~a.tgz http://www-eu.apache.org/dist/zeppelin/~a/~a-bin-all.tgz"
+                  with-version with-version with-version)
+          (format "tar xzf ~a.tgz" with-version)
+          (format "mv ~a-bin-all zeppelin" with-version)
+          (format "rm ~a.tgz" with-version))))
+
+(define zeppelin-dockerfile
+  (jvm-dockerfile #hash()
+                  (hash "interpreter.json.tmpl" (render-template "interpreter.json.tmpl")
+                        "start_zeppelin.sh" (render-template "start_zeppelin.sh")
+                        "zeppelin-site.xml.tmpl" (render-template "zeppelin-site.xml.tmpl")
+                        "zeppelin-env.sh" (render-template "zeppelin-env.sh"))
+                  (append (zeppelin-run "0.7.0")
+                          (spark-run "2.1.0"))
+                  '("bash" "start_zeppelin.sh")))
+
+(define zeppelin-service (simple-service "zeppelin" "0.0.1" ZEPPELIN_PORT zeppelin-dockerfile))
+
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
   (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
@@ -153,6 +175,7 @@
                                       ; max-vol-per-day-service
                                       )
                                 (list producer-job kafka-connect-job)))
+                                      zeppelin-service
 
 (define (run-all)
   (create-project-dirs sample-project #t)

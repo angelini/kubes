@@ -9,4 +9,5 @@ projects
 spark/*
 kafka/*
 target
+zeppelin/*
 zookeeper-*

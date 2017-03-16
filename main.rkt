@@ -143,39 +143,27 @@
   (jvm-dockerfile #hash()
                   (producer-files)
                   (kafka-run "0.10.1.0" "2.11")
-                  (list "bash" "start_producer.sh")))
+                  '("bash" "start_producer.sh")))
 
 (define producer-container (container "producer" "0.0.1" #f producer-dockerfile))
 
 (define producer-job (job "producer" (list producer-container)))
 
-(define kafka-connect-dockerfile
-  (jvm-dockerfile #hash()
-                  (hash "s3.properties.tmpl" (render-template "s3.properties.tmpl")
-                        "start_kafka_connect.sh" (render-template "start_kafka_connect.sh"))
-                  (kafka-run "0.10.1.0" "2.11")
-                  (list "bash" "start_kafka_connect.sh")))
-
-(define kafka-connect-container (container "kafka-connect" "0.0.1" #f kafka-connect-dockerfile))
-
-(define kafka-connect-job (job "kafka-connect" (list kafka-connect-container)))
-
-(define max-volume-per-day-dockerfile
+(define dev-dockerfile
   (jvm-dockerfile #hash()
                   #hash()
-                  '()
-                  (list "bash")))
+                  (append (kafka-run "0.10.1.0" "2.11") (spark-run "2.1.0"))
+                  '("sleep" "infinity")))
 
-(define max-volume-per-day-service
-  (simple-service "max-volume-per-day" "0.0.1" #f max-volume-per-day-dockerfile))
+(define dev-service
+  (simple-service "dev" "0.0.1" #f dev-dockerfile))
 
 (define sample-project (project "sample"
                                 (list zk-service minio-service kafka-service
                                       spark-master-service spark-worker-service
-                                      ; max-vol-per-day-service
-                                      )
-                                (list producer-job kafka-connect-job)))
                                       zeppelin-service
+                                      dev-service)
+                                (list producer-job)))
 
 (define (run-all)
   (create-project-dirs sample-project #t)

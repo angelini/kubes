@@ -122,11 +122,11 @@
 
 (define zeppelin-volume (volume "notebooks" 1 (build-path "/data/zeppelin-notebooks")))
 
-(define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT ZEPPELIN_PORT) zeppelin-dockerfile))
+(define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT) zeppelin-dockerfile))
 
 (define zeppelin-service (service "zeppelin" 1
                                   (list zeppelin-container)
-                                  (list (cons ZEPPELIN_PORT ZEPPELIN_PORT))
+                                  (list ZEPPELIN_PORT)
                                   (list zeppelin-volume)))
 
 (define (producer-files)

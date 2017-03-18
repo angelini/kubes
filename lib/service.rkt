@@ -49,9 +49,8 @@
          "spec" spec)))
 
 (define (service->yaml proj-name serv)
-  (define spec (hash "ports" (map (lambda (p) (hash "name" (~a (car p))
-                                                    "port" (car p)
-                                                    "targetPort" (cdr p)))
+  (define spec (hash "ports" (map (lambda (p) (hash "name" (format "~a-~a" (service-name serv) p)
+                                                    "port" p))
                                   (service-ports serv))
                      "selector" (hash "app" (service-name serv)
                                       "namespace" proj-name)
@@ -113,5 +112,4 @@
 (define (simple-service name image-version ports dockerfile)
   (define ports-list (or (if (integer? ports) (list ports) ports) '()))
   (define cont (container name image-version ports-list dockerfile))
-  (define port-pairs (map (lambda (p) (cons p p)) ports-list))
-  (service name 1 (list cont) port-pairs '()))
+  (service name 1 (list cont) ports-list '()))

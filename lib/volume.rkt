@@ -10,17 +10,19 @@
          delete-volume
          delete-volume-claim
          volume
-         volume->hash)
+         volume->hash
+         volume-exists?
+         volume-name)
 
 (struct volume (name size path))
 
-(define (claim-name vol)
+(define (volume-claim-name vol)
   (format "~a-claim" (volume-name vol)))
 
 (define (volume-file vol)
   (format "~a-volume.yml" (volume-name vol)))
 
-(define (claim-file vol)
+(define (volume-claim-file vol)
   (format "~a-claim.yml" (volume-name vol)))
 
 (define (volume-dir serv-dir vol)
@@ -28,7 +30,7 @@
 
 (define (volume->hash vol)
   (hash "name" (volume-name vol)
-        "persistentVolumeClaim" (hash "claimName" (claim-name vol))))
+        "persistentVolumeClaim" (hash "claimName" (volume-claim-name vol))))
 
 (define (volume->yaml vol)
   (define spec (hash "capacity" (hash "storage" (format "~aGi" (volume-size vol)))
@@ -51,17 +53,17 @@
   (yaml->string
    (hash "kind" "PersistentVolumeClaim"
          "apiVersion" "v1"
-         "metadata" (hash "name" (claim-name vol))
+         "metadata" (hash "name" (volume-claim-name vol))
          "spec" spec)))
 
 (define (create-volume-files vol-dir vol)
   (write-file vol-dir (volume-file vol) (volume->yaml vol))
-  (write-file vol-dir (claim-file vol) (volume->claim-yaml vol)))
+  (write-file vol-dir (volume-claim-file vol) (volume->claim-yaml vol)))
 
 (define (create-volume-and-claim proj-name serv-dir vol)
   (displayln (format "> create volume: ~a" (volume-name vol)))
   (kubectl-create proj-name (build-path (volume-dir serv-dir vol) (volume-file vol)) '#:streaming)
-  (kubectl-create proj-name (build-path (volume-dir serv-dir vol) (claim-file vol)) '#:streaming)
+  (kubectl-create proj-name (build-path (volume-dir serv-dir vol) (volume-claim-file vol)) '#:streaming)
   (volume-name vol))
 
 (define (delete-volume proj-name vol)
@@ -71,7 +73,11 @@
     (kubectl-delete proj-name args '#:raise)))
 
 (define (delete-volume-claim proj-name vol)
-  (define args (list "persistentvolumeclaim" (claim-name vol)))
+  (define args (list "persistentvolumeclaim" (volume-claim-name vol)))
   (when (kubectl-get proj-name args)
     (displayln (format "> delete claim: ~a" (volume-name vol)))
     (kubectl-delete proj-name args '#:raise)))
+
+(define (volume-exists? proj-name vol)
+  (define args (list "persistentvolume" (format "~a-volume" (volume-name vol))))
+  (not (boolean? (kubectl-get proj-name args))))

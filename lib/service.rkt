@@ -111,5 +111,5 @@
 
 (define (simple-service name image-version ports dockerfile)
   (define ports-list (or (if (integer? ports) (list ports) ports) '()))
-  (define cont (container name image-version ports-list dockerfile))
+  (define cont (container name image-version ports-list #hash() dockerfile))
   (service name 1 (list cont) ports-list '()))

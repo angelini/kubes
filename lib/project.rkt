@@ -54,10 +54,11 @@
   (map (curry create-job (project-name proj) (project-dir proj))
        (project-jobs proj)))
 
-(define (teardown-project proj)
+(define (teardown-project proj [delete-volumes #f])
   (stop-jobs proj)
-  (kubectl-delete (project-name proj) (list "persistentvolumeclaims" "--all"))
-  (kubectl-delete (project-name proj) (list "persistentvolumes" "--all"))
+  (when delete-volumes
+    (kubectl-delete (project-name proj) (list "persistentvolumeclaims" "--all"))
+    (kubectl-delete (project-name proj) (list "persistentvolumes" "--all")))
   (kubectl-delete (project-name proj) (list "deployments" "--all"))
   (kubectl-delete (project-name proj) (list "services" "--all")))
 
@@ -71,9 +72,8 @@
     (displayln (format "> skip namespace: ~a" proj-name)))
   (map (lambda (serv)
          (map (lambda (vol)
-                (delete-volume-claim proj-name vol)
-                (delete-volume proj-name vol)
-                (create-volume-and-claim proj-name (service-dir proj-dir serv) vol))
+                (when (not (volume-exists? proj-name vol))
+                  (create-volume-and-claim proj-name (service-dir proj-dir serv) vol)))
               (service-volumes serv))
          (if (has-deployment-changed? proj-name
                                       (deployment-name serv)

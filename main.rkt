@@ -97,7 +97,7 @@
 
 (define spark-worker-service
   (let* ([df (spark-dockerfile '("bash" "start_spark_worker.sh"))]
-         [cont (container "spark-worker" "0.0.1" '() df)])
+         [cont (container "spark-worker" "0.0.1" '() #hash() df)])
     (service "spark-worker" 2 (list cont) '() '())))
 
 (define ZEPPELIN_PORT 8080)
@@ -122,7 +122,9 @@
 
 (define zeppelin-volume (volume "notebooks" 1 (build-path "/data/zeppelin-notebooks")))
 
-(define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT) zeppelin-dockerfile))
+(define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT)
+                                      (hash "/home/root/mount" zeppelin-volume)
+                                      zeppelin-dockerfile))
 
 (define zeppelin-service (service "zeppelin" 1
                                   (list zeppelin-container)
@@ -153,7 +155,7 @@
                   (kafka-run "0.10.1.0" "2.11")
                   '("bash" "start_producer.sh")))
 
-(define producer-container (container "producer" "0.0.1" #f producer-dockerfile))
+(define producer-container (container "producer" "0.0.1" #f #hash() producer-dockerfile))
 
 (define producer-job (job "producer" (list producer-container)))
 

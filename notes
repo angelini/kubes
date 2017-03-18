@@ -1,0 +1,7 @@
+# Read Kafka topic
+kafka/bin/kafka-console-consumer.sh --bootstrap-server ${KAFKA_SERVICE_HOST}:${KAFKA_SERVICE_PORT} --topic sample_topic --from-beginning
+
+# Start spark-shell with Kafka package
+spark/bin/spark-shell \
+  --master spark://${SPARK_MASTER_SERVICE_HOST}:${SPARK_MASTER_SERVICE_PORT} \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.1.0

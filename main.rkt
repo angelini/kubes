@@ -5,7 +5,8 @@
          "lib/exec.rkt"
          "lib/job.rkt"
          "lib/project.rkt"
-         "lib/service.rkt")
+         "lib/service.rkt"
+         "lib/volume.rkt")
 
 (define (render-template file-name [context #hash()])
   (foldl (lambda (ctx-cons acc)
@@ -97,7 +98,7 @@
 (define spark-worker-service
   (let* ([df (spark-dockerfile '("bash" "start_spark_worker.sh"))]
          [cont (container "spark-worker" "0.0.1" '() df)])
-    (service "spark-worker" 2 (list cont) '())))
+    (service "spark-worker" 2 (list cont) '() '())))
 
 (define ZEPPELIN_PORT 8080)
 
@@ -119,7 +120,14 @@
                           (spark-run "2.1.0"))
                   '("bash" "start_zeppelin.sh")))
 
-(define zeppelin-service (simple-service "zeppelin" "0.0.1" ZEPPELIN_PORT zeppelin-dockerfile))
+(define zeppelin-volume (volume "notebooks" 1 (build-path "/data/zeppelin-notebooks")))
+
+(define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT ZEPPELIN_PORT) zeppelin-dockerfile))
+
+(define zeppelin-service (service "zeppelin" 1
+                                  (list zeppelin-container)
+                                  (list (cons ZEPPELIN_PORT ZEPPELIN_PORT))
+                                  (list zeppelin-volume)))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))

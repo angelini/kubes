@@ -57,10 +57,9 @@
 
 (define (stream-print port)
   (let loop ([s (read-string 1 port)])
-    (if (eof-object? s)
-        (displayln "")
-        (begin (display s)
-               (loop (read-string 1 port))))))
+    (when (not (eof-object? s))
+      (display s)
+      (loop (read-string 1 port)))))
 
 (define (exec-streaming dir command . args)
   (parameterize ([current-environment-variables env-vars]

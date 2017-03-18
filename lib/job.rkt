@@ -24,8 +24,8 @@
                                                     (job-containers job))
                                   "restartPolicy" "Never")))
   (yaml->string
-   (hash "apiVersion" "batch/v1"
-         "kind" "Job"
+   (hash "kind" "Job"
+         "apiVersion" "batch/v1"
          "metadata" (hash "name" (format "~a-job" (job-name job)))
          "spec" (hash "template" tmpl))))
 

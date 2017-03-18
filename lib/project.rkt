@@ -7,7 +7,8 @@
          "exec.rkt"
          "job.rkt"
          "service.rkt"
-         "utils.rkt")
+         "utils.rkt"
+         "volume.rkt")
 
 (provide build-project
          create-project-dirs
@@ -24,8 +25,8 @@
 
 (define (project->yaml proj)
   (yaml->string
-   (hash "apiVersion" "v1"
-         "kind" "Namespace"
+   (hash "kind" "Namespace"
+         "apiVersion" "v1"
          "metadata" (hash "name" (project-name proj)))))
 
 (define (create-project-dirs proj [overwrite #f])
@@ -55,8 +56,10 @@
 
 (define (teardown-project proj)
   (stop-jobs proj)
-  (exec-raise root-dir "kubectl" "--namespace" (project-name proj) "delete" "deployments" "--all")
-  (exec-raise root-dir "kubectl" "--namespace" (project-name proj) "delete" "services" "--all"))
+  (kubectl-delete (project-name proj) (list "persistentvolumeclaims" "--all"))
+  (kubectl-delete (project-name proj) (list "persistentvolumes" "--all"))
+  (kubectl-delete (project-name proj) (list "deployments" "--all"))
+  (kubectl-delete (project-name proj) (list "services" "--all")))
 
 (define (deploy-project proj)
   (stop-jobs proj)
@@ -67,6 +70,11 @@
            (exec-streaming (project-dir proj) "kubectl" "create" "-f" "namespace.yml"))
     (displayln (format "> skip namespace: ~a" proj-name)))
   (map (lambda (serv)
+         (map (lambda (vol)
+                (delete-volume-claim proj-name vol)
+                (delete-volume proj-name vol)
+                (create-volume-and-claim proj-name (service-dir proj-dir serv) vol))
+              (service-volumes serv))
          (if (has-deployment-changed? proj-name
                                       (deployment-name serv)
                                       (build-path (service-dir proj-dir serv) "containers"))

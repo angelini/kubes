@@ -5,7 +5,8 @@
          "constants.rkt"
          "container.rkt"
          "exec.rkt"
-         "utils.rkt")
+         "utils.rkt"
+         "volume.rkt")
 
 (provide build-service-containers
          create-deployment
@@ -17,9 +18,10 @@
          service
          service-dir
          service-name
+         service-volumes
          simple-service)
 
-(struct service (name replicas containers ports))
+(struct service (name replicas containers ports volumes))
 
 (define (deployment-name serv)
   (format "~a-deployment" (service-name serv)))
@@ -33,12 +35,15 @@
                          "spec" (hash "containers" (map (lambda (c)
                                                           (container->hash proj-name c
                                                                            #:with-ports #t))
-                                                        (service-containers serv)))))
+                                                        (service-containers serv))
+                                      "volumes" (map (lambda (v)
+                                                       (volume->hash v))
+                                                     (service-volumes serv)))))
   (define spec (hash "replicas" (service-replicas serv)
                      "template" pod-tmpl))
   (yaml->string
-   (hash "apiVersion" "extensions/v1beta1"
-         "kind" "Deployment"
+   (hash "kind" "Deployment"
+         "apiVersion" "extensions/v1beta1"
          "metadata" (hash "name" (deployment-name serv)
                           "annotations" (hash "shasum" shasum))
          "spec" spec)))
@@ -52,19 +57,22 @@
                                       "namespace" proj-name)
                      "type" "NodePort"))
   (yaml->string
-   (hash "apiVersion" "v1"
-         "kind" "Service"
+   (hash "kind" "Service"
+         "apiVersion" "v1"
          "metadata" (hash "name" (~a (service-name serv)))
          "spec" spec)))
 
 (define (create-service-dir proj-dir proj-name serv)
-  (define dir (build-path proj-dir (service-name serv)))
+  (define dir (service-dir proj-dir serv))
   (define containers-dir (build-path dir "containers"))
+  (define volumes-dir (build-path dir "volumes"))
   (when (directory-exists? dir)
     (error 'directory-exists "~a" dir))
   (make-directory dir)
   (make-directory containers-dir)
+  (make-directory volumes-dir)
   (map (curry create-container-dir containers-dir  #:with-command #t) (service-containers serv))
+  (map (curry create-volume-files volumes-dir) (service-volumes serv))
   (define shasum (shasum-dir containers-dir))
   (write-file dir "deployment.yml" (service->deployment-yaml proj-name serv shasum))
   (when (not (empty? (service-ports serv)))
@@ -106,4 +114,4 @@
   (define ports-list (or (if (integer? ports) (list ports) ports) '()))
   (define cont (container name image-version ports-list dockerfile))
   (define port-pairs (map (lambda (p) (cons p p)) ports-list))
-  (service name 1 (list cont) port-pairs))
+  (service name 1 (list cont) port-pairs '()))

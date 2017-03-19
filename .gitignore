@@ -10,4 +10,4 @@ spark/*
 kafka/*
 target
 zeppelin/*
-zookeeper-*
+zookeeper/*

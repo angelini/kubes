@@ -33,7 +33,7 @@
   (display "bin/kubes allows you to interact with a runnings kubes project
 
 Usage:
-  kubes [command]
+  kubes [command] [namespace] [arg ...]
 
 Available Commands:
   connect    Connect to a bash shell on a random running pod

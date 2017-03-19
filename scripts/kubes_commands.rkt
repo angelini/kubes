@@ -21,7 +21,9 @@
 
 (define (open-dashboard namespace)
   (string-append
-   "xdg-open "
+   (case (system-type 'os)
+     ['macosx "open "]
+     ['unix "xdg-open "])
    (string-trim (exec-stdout root-dir "minikube" "dashboard" "--url"))
    (format "/#/workload?namespace=~a" namespace)))
 

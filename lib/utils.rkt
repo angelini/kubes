@@ -16,26 +16,26 @@
 
 (define-type OutputMode (U '#:stdout '#:streaming '#:raise))
 
-(: output-mode->command (-> OutputMode (-> Path String String * (U String False Void))))
+(: output-mode->command (-> OutputMode (-> Path String String * (U String Boolean))))
 (define (output-mode->command mode)
   (case mode
     ['#:stdout exec-stdout]
     ['#:streaming exec-streaming]
     ['#:raise exec-raise]))
 
-(: kubectl-get (->* (String (Listof String)) (OutputMode) (U String False Void)))
+(: kubectl-get (->* (String (Listof String)) (OutputMode) (U String Boolean)))
 (define (kubectl-get namespace args [output-mode '#:stdout])
   (apply (output-mode->command output-mode)
          root-dir
          "kubectl" "get" "--namespace" namespace args))
 
-(: kubectl-create (->* (String Path) (OutputMode) (U String False Void)))
+(: kubectl-create (->* (String Path) (OutputMode) (U String Boolean)))
 (define (kubectl-create namespace file-path [output-mode '#:stdout])
   ((output-mode->command output-mode)
    root-dir
    "kubectl" "create" "--namespace" namespace "-f" (path->string file-path)))
 
-(: kubectl-delete (->* (String (Listof String)) (OutputMode) (U String False Void)))
+(: kubectl-delete (->* (String (Listof String)) (OutputMode) (U String Boolean)))
 (define (kubectl-delete namespace args [output-mode '#:stdout])
   (apply (output-mode->command output-mode)
          root-dir

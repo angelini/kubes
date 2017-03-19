@@ -1,7 +1,7 @@
 #lang typed/racket
 
 (require/typed racket/base
-               [environment-variables-copy (-> Environment-Variables Environment-Variables)])
+  [environment-variables-copy (-> Environment-Variables Environment-Variables)])
 (require "constants.rkt")
 
 (provide exec
@@ -90,7 +90,7 @@
       (display s)
       (loop (read-string 1 port)))))
 
-(: exec-streaming (-> Path String String * Void))
+(: exec-streaming (-> Path String String * True))
 (define (exec-streaming dir command . args)
   (parameterize ([current-environment-variables env-vars]
                  [current-directory dir])
@@ -101,7 +101,7 @@
       (displayln (read-all stderr))
       (error 'exec-error "$ ~a ~a ~a" dir command args))
     (close-ports stdout stdin stderr)
-    (void)))
+    #t))
 
 (: exec-stdout (-> Path String String * (U String False)))
 (define (exec-stdout dir command . args)

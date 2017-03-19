@@ -1,4 +1,4 @@
-#lang racket
+#lang typed/racket
 
 (require "constants.rkt"
          "exec.rkt")
@@ -8,27 +8,34 @@
          kubectl-get
          write-file)
 
+(: write-file (-> Path String String Void))
 (define (write-file dir name contents)
   (call-with-output-file (build-path dir name)
-    (lambda (out)
+    (lambda ([out : Output-Port])
       (display contents out))))
 
+(define-type OutputMode (U '#:stdout '#:streaming '#:raise))
+
+(: output-mode->command (-> OutputMode (-> Path String String * (U String False Void))))
 (define (output-mode->command mode)
   (case mode
     ['#:stdout exec-stdout]
     ['#:streaming exec-streaming]
     ['#:raise exec-raise]))
 
+(: kubectl-get (->* (String (Listof String)) (OutputMode) (U String False Void)))
 (define (kubectl-get namespace args [output-mode '#:stdout])
   (apply (output-mode->command output-mode)
          root-dir
          "kubectl" "get" "--namespace" namespace args))
 
-(define (kubectl-create namespace file-name [output-mode '#:stdout])
+(: kubectl-create (->* (String Path) (OutputMode) (U String False Void)))
+(define (kubectl-create namespace file-path [output-mode '#:stdout])
   ((output-mode->command output-mode)
    root-dir
-   "kubectl" "create" "--namespace" namespace "-f" (path->string file-name)))
+   "kubectl" "create" "--namespace" namespace "-f" (path->string file-path)))
 
+(: kubectl-delete (->* (String (Listof String)) (OutputMode) (U String False Void)))
 (define (kubectl-delete namespace args [output-mode '#:stdout])
   (apply (output-mode->command output-mode)
          root-dir

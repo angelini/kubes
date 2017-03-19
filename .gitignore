@@ -11,3 +11,4 @@ kafka/*
 target
 zeppelin/*
 zookeeper/*
+*.hash

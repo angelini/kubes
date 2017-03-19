@@ -139,8 +139,9 @@
         "producer-assembly.jar"
         (lambda (dir)
           (displayln (format "> sbt compile: ~a" dir))
-          (when (has-directory-changed? (build-path scala-dir "src") scala-dir)
-            (exec-streaming scala-dir "sbt" "compile" "assembly"))
+          (if (has-directory-changed? (build-path scala-dir "src") scala-dir)
+              (exec-streaming scala-dir "sbt" "compile" "assembly")
+              (displayln (format "> skip compile: ~a" dir)))
           (copy-file (build-path scala-dir "target/scala-2.12/producer-assembly-0.0.1.jar")
                      (build-path dir "producer-assembly.jar"))
           (write-dir-hash (build-path scala-dir "src") scala-dir))

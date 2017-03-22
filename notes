@@ -5,3 +5,13 @@ kafka/bin/kafka-console-consumer.sh --bootstrap-server ${KAFKA_SERVICE_HOST}:${K
 spark/bin/spark-shell \
   --master spark://${SPARK_MASTER_SERVICE_HOST}:${SPARK_MASTER_SERVICE_PORT} \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.1.0
+
+# Start pyspark shell from Jupyter
+import os
+import pyspark
+master_uri = 'spark://{}:{}'.format(os.environ.get('SPARK_MASTER_SERVICE_HOST'),
+                                    os.environ.get('SPARK_MASTER_SERVICE_PORT'))
+print(master_uri)
+spark = pyspark.sql.SparkSession.builder \
+    .master(master_uri) \
+    .getOrCreate()

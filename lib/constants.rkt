@@ -1,10 +1,6 @@
 #lang typed/racket
 
-(provide container-working-dir
-         root-dir)
-
-(define container-working-dir : Path
-  (string->path "/home/root"))
+(provide root-dir)
 
 (define root-dir : Path
   (let ([dir (current-directory)])

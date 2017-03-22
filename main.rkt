@@ -15,10 +15,15 @@
          (file->string (build-path root-dir "templates" file-name))
          (hash->list context)))
 
-(define (jvm-dockerfile env files run cmd)
-  (dockerfile "ubuntu:16.10"
-              '("curl" "less" "openjdk-8-jre-headless")
-              container-working-dir (hash-set env "TERM" "xterm") files run cmd))
+(define WORKING_DIR (string->path "/home/root"))
+
+(define (jvm-dockerfile env files run cmd #:include-python [py #f])
+  (let* ([packages '("curl" "less" "openjdk-8-jre-headless")]
+         [packages (if py
+                       (append packages '("python3" "python3-pip"))
+                       packages)])
+    (dockerfile "ubuntu:16.10" packages WORKING_DIR
+                (hash-set env "TERM" "xterm") files run cmd)))
 
 (define ZK_PORT 2181)
 (define ZK_DATA_DIR "zk_data")
@@ -32,8 +37,8 @@
           (format "rm ~a.tar.gz" with-version))))
 
 (define zk-dockerfile
-  (let* ([config-path (build-path container-working-dir "zoo.cfg")]
-         [cfg-context (hash "data_dir" (path->string (build-path container-working-dir ZK_DATA_DIR))
+  (let* ([config-path (build-path WORKING_DIR "zoo.cfg")]
+         [cfg-context (hash "data_dir" (path->string (build-path WORKING_DIR ZK_DATA_DIR))
                             "client_port" (~a ZK_PORT))])
     (jvm-dockerfile #hash()
                     (hash "zoo.cfg" (render-template "zoo.cfg" cfg-context))
@@ -64,7 +69,7 @@
           (format "rm ~a.tgz" with-version))))
 
 (define kafka-dockerfile
-  (let ([config-path (build-path container-working-dir "server.properties")])
+  (let ([config-path (build-path WORKING_DIR "server.properties")])
     (jvm-dockerfile #hash()
                     (hash "server.properties.tmpl" (render-template "server.properties.tmpl")
                           "start_kafka.sh" (render-template "start_kafka.sh"))
@@ -86,7 +91,7 @@
           (format "rm ~a.tgz" with-version))))
 
 (define (spark-dockerfile cmd)
-  (jvm-dockerfile (hash "SPARK_HOME" (path->string (build-path container-working-dir "spark")))
+  (jvm-dockerfile (hash "SPARK_HOME" (path->string (build-path WORKING_DIR "spark")))
                   (hash "start_spark_master.sh" (render-template "start_spark_master.sh")
                         "start_spark_worker.sh" (render-template "start_spark_worker.sh"))
                   (spark-run "2.1.0")
@@ -121,7 +126,7 @@
                           (spark-run "2.1.0"))
                   '("bash" "start_zeppelin.sh")))
 
-(define zeppelin-volume (volume "notebooks" 1 (build-path "/data/zeppelin-notebooks")))
+(define zeppelin-volume (volume "zeppelin-notebooks" 1 (build-path "/data/zeppelin-notebooks")))
 
 (define zeppelin-container (container "zeppelin" "0.0.1" (list ZEPPELIN_PORT)
                                       (hash "/home/root/mount" zeppelin-volume)
@@ -131,6 +136,33 @@
                                   (list zeppelin-container)
                                   (list ZEPPELIN_PORT)
                                   (list zeppelin-volume)))
+
+(define JUPYTER_PORT 8888)
+
+(define jupyter-dockerfile
+  (let* ([build-string-path (lambda args (path->string (apply build-path args)))]
+         [spark-dir (build-string-path WORKING_DIR "spark")]
+         [paths (hash "spark_dir" spark-dir
+                      "pyspark_dir" (build-string-path spark-dir "python")
+                      "py4j_dir" (build-string-path spark-dir "python" "lib" "py4j-0.10.4-src.zip"))])
+    (jvm-dockerfile #hash()
+                    (hash "start_jupyter.sh" (render-template "start_jupyter.sh" paths))
+                    (append '("pip3 install --upgrade pip"
+                              "pip3 install jupyter")
+                            (spark-run "2.1.0"))
+                    (list "bash" "start_jupyter.sh")
+                    #:include-python #t)))
+
+(define jupyter-volume (volume "jupyter-notebooks" 1 (build-path "/data/jupyter-notebooks")))
+
+(define jupyter-container (container "jupyter" "0.0.1" (list JUPYTER_PORT)
+                                     (hash "/home/root/mount" jupyter-volume)
+                                     jupyter-dockerfile))
+
+(define jupyter-service (service "jupyter" 1
+                                 (list jupyter-container)
+                                 (list JUPYTER_PORT)
+                                 (list jupyter-volume)))
 
 (define (producer-files)
   (define scala-dir (build-path root-dir "scala/producer"))
@@ -159,7 +191,7 @@
                   (kafka-run "0.10.1.0" "2.11")
                   '("bash" "start_producer.sh")))
 
-(define producer-container (container "producer" "0.0.1" #f #hash() producer-dockerfile))
+(define producer-container (container "producer" "0.0.1" '() #hash() producer-dockerfile))
 
 (define producer-job (job "producer" (list producer-container)))
 
@@ -170,12 +202,13 @@
                   '("sleep" "infinity")))
 
 (define dev-service
-  (simple-service "dev" "0.0.1" #f dev-dockerfile))
+  (simple-service "dev" "0.0.1" '() dev-dockerfile))
 
 (define sample-project (project "sample"
                                 (list zk-service minio-service kafka-service
                                       spark-master-service spark-worker-service
-                                      zeppelin-service
+                                      ;; zeppelin-service
+                                      jupyter-service
                                       dev-service)
                                 (list producer-job)))
 

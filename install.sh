@@ -32,7 +32,7 @@ mkdir -p "${DIR}/projects"
 mkdir -p "${DIR}/templates"
 
 if [[ ! -f "${MINIKUBE_BIN}" ]]; then
-  mincurl -Lo "${MINIKUBE_BIN}" "https://storage.googleapis.com/minikube/releases/v${MINIKUBE_VERSION}/minikube-${PLATFORM}-amd64"
+  curl -Lo "${MINIKUBE_BIN}" "https://storage.googleapis.com/minikube/releases/v${MINIKUBE_VERSION}/minikube-${PLATFORM}-amd64"
   chmod +x "${MINIKUBE_BIN}"
 fi
 

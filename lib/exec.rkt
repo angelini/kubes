@@ -65,7 +65,7 @@
 (define env-vars : Environment-Variables
   (let ([vars (environment-variables-copy (current-environment-variables))]
         [bin-dir (build-path root-dir "bin")])
-    (set-var vars "PATH" (format "~a:~a" (path->string bin-dir) (getenv "PATH")))
+    (putenv "PATH" (format "~a:~a" (path->string bin-dir) (getenv "PATH")))
     (map (lambda ([pair : (Pairof String String)])
            (set-var vars (car pair) (cdr pair)))
          (minikube-docker-env bin-dir))

@@ -17,7 +17,7 @@
 
 (define (connect-to-pod namespace [app #f])
   (define pod (car (pods-list namespace app)))
-  (format "kubectl --namespace=~a exec -it ~a -- bash" namespace pod))
+  (format "kubectl --namespace=~a exec -it ~a env TERM=xterm -- bash" namespace pod))
 
 (define (open-dashboard namespace)
   (string-append

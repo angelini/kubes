@@ -27,6 +27,9 @@
    (string-trim (exec-stdout root-dir "minikube" "dashboard" "--url"))
    (format "/#/workload?namespace=~a" namespace)))
 
+(define (open-service project service)
+  (format "minikube --namespace ~a service ~a" project service))
+
 (define (follow-logs-from-pod namespace app)
   (define pod (car (pods-list namespace app)))
   (format "kubectl --namespace=~a logs -f ~a" namespace pod))
@@ -39,8 +42,9 @@ Usage:
 
 Available Commands:
   connect    Connect to a bash shell on a random running pod
-  dash       Open the dashboard at the correct namespace
+  dash       Open the dashboard in the default browser
   logs       Follow logs from a random pod within the specified app
+  open       Open all ports for a service in the default browser
 "))
 
 (define (run)
@@ -53,6 +57,7 @@ Available Commands:
     [("connect") (apply connect-to-pod args)]
     [("dash") (apply open-dashboard args)]
     [("logs") (apply follow-logs-from-pod args)]
+    [("open") (apply open-service args)]
     [else (begin (print-usage)
                  (exit 1))]))
 

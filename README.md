@@ -46,4 +46,5 @@ Available Commands:
   connect    Connect to a bash shell on a random running pod
   dash       Open the dashboard at the correct namespace
   logs       Follow logs from a random pod within the specified app
+  open       Open all ports for a service in the default browser
 ```

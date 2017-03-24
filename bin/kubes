@@ -3,6 +3,9 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMAND="$(${DIR}/../scripts/kubes_commands.rkt "$@" 2>&1)"
 
+export COLUMNS="$(tput cols)"
+export LINES="$(tput lines)"
+
 if [[ $? -eq 0 ]]; then
   exec ${COMMAND//\"}
 else

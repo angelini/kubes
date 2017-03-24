@@ -62,20 +62,27 @@
   (environment-variables-set! vars (string->bytes/utf-8 key) (string->bytes/utf-8 val))
   val)
 
-(define env-vars : Environment-Variables
+(: build-env-vars (-> Environment-Variables))
+(define (build-env-vars)
   (let ([vars (environment-variables-copy (current-environment-variables))]
         [bin-dir (build-path root-dir "bin")])
     (putenv "PATH" (format "~a:~a" (path->string bin-dir) (getenv "PATH")))
-    (map (lambda ([pair : (Pairof String String)])
-           (set-var vars (car pair) (cdr pair)))
-         (minikube-docker-env bin-dir))
+    (for ([pair : (Pairof String String) (minikube-docker-env bin-dir)])
+      (set-var vars (car pair) (cdr pair)))
     vars))
+
+(define env-vars : (-> Environment-Variables)
+  (let ([vars : (U Void Environment-Variables) (void)])
+    (lambda ()
+      (when (void? vars)
+        (set! vars (build-env-vars)))
+      (cast vars Environment-Variables))))
 
 (struct exec-output ([code : Integer] [stdout : String] [stderr : String]))
 
 (: exec (-> Path String String * exec-output))
 (define (exec dir command . args)
-  (parameterize ([current-environment-variables env-vars]
+  (parameterize ([current-environment-variables (env-vars)]
                  [current-directory dir])
     (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-exec-path command) args))
     (subprocess-wait sp)
@@ -92,7 +99,7 @@
 
 (: exec-streaming (-> Path String String * True))
 (define (exec-streaming dir command . args)
-  (parameterize ([current-environment-variables env-vars]
+  (parameterize ([current-environment-variables (env-vars)]
                  [current-directory dir])
     (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-exec-path command) args))
     (stream-print stdout)
@@ -112,8 +119,8 @@
 
 (: exec-raise (-> Path String String * String))
 (define (exec-raise dir command . args)
-    (parameterize ([current-environment-variables env-vars]
-                   [current-directory dir])
+  (parameterize ([current-environment-variables (env-vars)]
+                 [current-directory dir])
     (define-values (sp stdout stdin stderr) (apply subprocess #f #f #f (find-exec-path command) args))
     (subprocess-wait sp)
     (define output (if (= 0 (subprocess-final-status sp))

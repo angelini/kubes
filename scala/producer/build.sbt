@@ -8,4 +8,4 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka_2.11" % "0.10.0.1"
 )
 
-mainClass in assembly := Some("com.alexangelini.Producer")
+mainClass in assembly := Some("com.alexangelini.kubes.producer.Producer")

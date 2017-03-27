@@ -199,7 +199,9 @@
   (simple-service "dev" "0.0.1" '() dev-dockerfile))
 
 (define sample-project (project "sample"
-                                (list zk-service minio-service kafka-service
+                                (list zk-service
+                                      kafka-service
+                                      ;; minio-service
                                       spark-master-service spark-worker-service
                                       ;; zeppelin-service
                                       jupyter-service

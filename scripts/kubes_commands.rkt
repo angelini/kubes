@@ -19,6 +19,7 @@
   (define pod (car (pods-list namespace app)))
   (format "kubectl --namespace=~a exec -it ~a env TERM=xterm -- bash" namespace pod))
 
+
 (define (open-dashboard namespace)
   (string-append
    (case (system-type 'os)

@@ -1,4 +1,4 @@
-package com.alexangelini
+package com.alexangelini.kubes.producer
 
 import java.io.File
 import java.util.Properties
@@ -22,6 +22,7 @@ object Producer extends App {
     val dir = new File("/home/root/data")
     // val dir = new File("/Users/alexangelini/src/kubes/data")
     dir.listFiles.filter(_.isFile)
+      .take(5)
       .flatMap(readYahooFinanceFile)
   }
 
